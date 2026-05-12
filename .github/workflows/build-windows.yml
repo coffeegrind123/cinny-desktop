@@ -1,0 +1,57 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src-tauri/**'
+      - 'cinny/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/build-windows.yml'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: true
+
+      - name: Setup node
+        uses: actions/setup-node@1a8102e0ae3c102bc67e3ef55e4e072e52163254 # v4.5.0
+        with:
+          node-version-file: '.node-version'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cinny dependencies
+        run: cd cinny && npm ci
+
+      - name: Install tauri dependencies
+        run: npm ci
+
+      - name: Build with Tauri
+        uses: tauri-apps/tauri-action@73fb865345c54760d875b94642314f8c0c894afa # v0.6.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: '--max_old_space_size=4096'
+        with:
+          args: --config '{"bundle":{"createUpdaterArtifacts":false}}'
+
+      - name: Upload NSIS installer
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cinny-windows-nsis
+          path: src-tauri/target/release/bundle/nsis/Cinny_*_x64-setup.exe
+          if-no-files-found: error
+
+      - name: Upload standalone exe
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cinny-windows-exe
+          path: src-tauri/target/release/cinny.exe
+          if-no-files-found: error

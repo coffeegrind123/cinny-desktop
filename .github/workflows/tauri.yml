@@ -47,6 +47,9 @@ jobs:
       - name: Move msi.zip.sig
         run: Move-Item "src-tauri\target\release\bundle\msi\Cinny_${{ env.TAURI_VERSION }}_x64_en-US.msi.zip.sig" "src-tauri\target\release\bundle\msi\Cinny_desktop-x86_64.msi.zip.sig"
         shell: pwsh
+      - name: Move nsis installer
+        run: Move-Item "src-tauri\target\release\bundle\nsis\Cinny_${{ env.TAURI_VERSION }}_x64-setup.exe" "src-tauri\target\release\bundle\nsis\Cinny_desktop-x86_64-setup.exe"
+        shell: pwsh
       - name: Upload tagged release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
@@ -54,6 +57,7 @@ jobs:
             src-tauri/target/release/bundle/msi/Cinny_desktop-x86_64.msi
             src-tauri/target/release/bundle/msi/Cinny_desktop-x86_64.msi.zip
             src-tauri/target/release/bundle/msi/Cinny_desktop-x86_64.msi.zip.sig
+            src-tauri/target/release/bundle/nsis/Cinny_desktop-x86_64-setup.exe
 
   # Linux-x86_64
   linux-x86_64:
