@@ -8,6 +8,23 @@
 use tauri::{webview::{NewWindowResponse, WebviewWindowBuilder}, WebviewUrl};
 use tauri_plugin_opener::OpenerExt;
 
+fn unifiedpush_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
+    tauri::plugin::Builder::new("unifiedpush")
+        .setup(|_app, api| {
+            #[cfg(target_os = "android")]
+            {
+                let _handle = api.register_android_plugin("in.cinny.app", "UnifiedPushPlugin")?;
+            }
+            #[cfg(not(target_os = "android"))]
+            let _ = &api;
+            Ok(())
+            #[cfg(target_os = "android")]
+            let _handle = api.register_android_plugin("in.cinny.app", "UnifiedPushPlugin")?;
+            Ok(())
+        })
+        .build()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let port: u16 = 44548;
@@ -23,7 +40,8 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_clipboard_manager::init());
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(unifiedpush_plugin());
 
     #[cfg(not(mobile))]
     {
