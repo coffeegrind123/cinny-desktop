@@ -133,11 +133,16 @@ Also run `source ~/.cargo/env` before building (shell state not preserved betwee
 
 This build runs on a **21GB RAM machine with 6GB swap**. The `src-tauri/target/` directory accumulates 15+ GB of stale artifacts. When swap is full, the combined Rust + Gradle build triggers OOM (exit 137).
 
-**Before every build, clean stale artifacts:**
+**The two rules that prevent OOM:**
+
+1. **Always `cargo clean` before every build** — frees 7-16GB of stale artifacts.
+2. **Always `CARGO_BUILD_JOBS=1`** — the Gradle RustPlugin spawns a separate `cargo build` for each ABI (4 targets). Without this, 4 parallel cargo instances each using all 12 cores saturate CPU and RAM simultaneously. With `CARGO_BUILD_JOBS=1`, each cargo instance is single-threaded so the 4 instances combined use ~4 cores instead of 48.
+
+**Before every build:**
 
 ```bash
 cd /opt/openclaude-src/cinny-desktop/src-tauri
-cargo clean                          # frees 15-16GB
+cargo clean                          # frees 7-16GB
 rm -rf gen/android/app/build         # clean Gradle build output
 ```
 
@@ -152,8 +157,9 @@ cd /opt/openclaude-src/cinny-desktop/src-tauri
 cargo clean
 rm -rf gen/android/app/build
 
-# 2. Build release APK (~8 minutes for all 4 ABIs)
+# 2. Build release APK (CARGO_BUILD_JOBS=1 is CRITICAL — prevents OOM)
 cd /opt/openclaude-src/cinny-desktop
+CARGO_BUILD_JOBS=1 \
 ANDROID_HOME=/opt/android-sdk \
 ANDROID_SDK_ROOT=/opt/android-sdk \
 NDK_HOME=/opt/android-sdk/ndk/27.0.12077973 \
@@ -231,7 +237,7 @@ This was previously `"false"` for release builds, causing `ERR_CLEARTEXT_NOT_PER
 ### Iteration (edit → test on device)
 
 1. Edit source in `cinny/src/` or `src-tauri/`
-2. Run the end-to-end build flow above
+2. Run the end-to-end build flow above (with `CARGO_BUILD_JOBS=1`)
 3. Transfer `app-release-signed.apk` to Android device
 4. Sideload and launch
 
