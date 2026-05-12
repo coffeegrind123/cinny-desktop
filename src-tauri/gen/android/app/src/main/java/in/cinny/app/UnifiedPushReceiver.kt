@@ -2,6 +2,7 @@ package `in`.cinny.app
 
 import android.content.Context
 import android.util.Log
+import org.unifiedpush.android.connector.FailedReason
 import org.unifiedpush.android.connector.MessagingReceiver
 import org.unifiedpush.android.connector.UnifiedPush
 import org.unifiedpush.android.connector.data.PushEndpoint
@@ -44,7 +45,7 @@ class UnifiedPushReceiver : MessagingReceiver() {
         message: PushMessage,
         instance: String,
     ) {
-        Log.i(TAG, "Push message received (${message.message.size} bytes, encrypted=${message.isEncrypted})")
-        UnifiedPushPlugin.instance?.onMessage(message.message)
+        Log.i(TAG, "Push message received (${message.content.size} bytes, decrypted=${message.decrypted})")
+        UnifiedPushPlugin.instance?.onMessage(message.content)
     }
 }
