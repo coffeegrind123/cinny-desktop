@@ -18,9 +18,6 @@ fn unifiedpush_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             #[cfg(not(target_os = "android"))]
             let _ = &api;
             Ok(())
-            #[cfg(target_os = "android")]
-            let _handle = api.register_android_plugin("in.cinny.app", "UnifiedPushPlugin")?;
-            Ok(())
         })
         .build()
 }
