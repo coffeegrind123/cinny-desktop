@@ -1,0 +1,20 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile-capability",
+  "platforms": [
+    "iOS",
+    "android"
+  ],
+  "permissions": [
+    "fs:default",
+    "core:default",
+    "shell:default",
+    "dialog:default",
+    "http:default",
+    "notification:default",
+    "os:default",
+    "process:default",
+    "clipboard-manager:default",
+    "mobile-push:default"
+  ]
+}

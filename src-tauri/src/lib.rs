@@ -8,21 +8,30 @@
 use tauri::{webview::{NewWindowResponse, WebviewWindowBuilder}, WebviewUrl};
 use tauri_plugin_opener::OpenerExt;
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let port: u16 = 44548;
     let context = tauri::generate_context!();
-    let builder = tauri::Builder::default();
-
-    // #[cfg(target_os = "macos")]
-    // {
-    //     builder = builder.menu(menu::menu());
-    // }
-
-    builder
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_localhost::Builder::new(port).build())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_mobile_push::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_clipboard_manager::init());
+
+    #[cfg(not(mobile))]
+    {
+        builder = builder
+            .plugin(tauri_plugin_window_state::Builder::default().build());
+    }
+
+    builder
         .setup(move |app| {
             // Dev: use devUrl from tauri.conf.json (http://localhost:8080) to support HMR
             #[cfg(debug_assertions)]
@@ -36,8 +45,14 @@ pub fn run() {
             };
 
             let app_handle = app.handle().clone();
-            WebviewWindowBuilder::new(app, "main".to_string(), window_url)
-                .title("Cinny")
+            let mut window_builder = WebviewWindowBuilder::new(app, "main".to_string(), window_url);
+
+            #[cfg(not(mobile))]
+            {
+                window_builder = window_builder.title("Cinny");
+            }
+
+            window_builder
                 .on_new_window(move |url, _features| {
                     let _ = app_handle.opener().open_url(url.as_str(), None::<&str>);
                     NewWindowResponse::Deny

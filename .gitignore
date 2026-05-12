@@ -4,3 +4,8 @@ node_modules
 devAssets
 
 .DS_Store
+
+# Android build artifacts (don't commit 119MB APKs or signing keys)
+*.apk
+*.apk.idsig
+debug.keystore

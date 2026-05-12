@@ -104,6 +104,135 @@ Without this, Cargo uses the system `cc` which produces Linux ELF binaries.
 - **`nsis_tauri_utils.dll` auto-downloaded** from GitHub on first build. Cached afterwards.
 - **`makensis.exe` symlink needed:** `ln -sf /usr/bin/makensis /usr/bin/makensis.exe`
 
+## Android build
+
+### Prerequisites
+
+| Tool | Path / Install | Purpose |
+|------|---------------|---------|
+| Android SDK | `/opt/android-sdk/` | Platform tools, build tools, platform APIs |
+| Android NDK | `/opt/android-sdk/ndk/27.0.12077973/` | Native (Rust) code compiler for Android |
+| Rust Android targets | `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android` | Cross-compile Rust to Android ABIs |
+| Tauri CLI | `@tauri-apps/cli@2.7.1` (npm root dep) | `npx tauri android build` entry point |
+| JDK | System (Gradle wrapper) | Gradle build |
+
+### Environment variables
+
+**All required** — the build fails without each one:
+
+```bash
+export ANDROID_HOME=/opt/android-sdk
+export ANDROID_SDK_ROOT=/opt/android-sdk
+export NDK_HOME=/opt/android-sdk/ndk/27.0.12077973
+```
+
+Also run `source ~/.cargo/env` before building (shell state not preserved between Bash calls).
+
+### Resource constraints (CRITICAL)
+
+This build runs on a **21GB RAM machine with only 6GB swap**, and the swap is often nearly full. Running all Rust targets + Gradle simultaneously triggers OOM (exit 137).
+
+**Constraints in place:**
+
+| What | Setting | Why |
+|------|---------|-----|
+| Gradle JVM heap | `-Xmx2048m` (in `gradle.properties`) | Keep Gradle daemon memory bounded |
+| Cargo build jobs | `CARGO_BUILD_JOBS=1` (or `2`) | One Rust compilation at a time — cross-compile to Android is heavy |
+| Android ABIs | `abiList=arm64-v8a,armeabi-v7a` (in `gradle.properties`) | Only ARM targets, skip x86/x86_64 |
+| Rust targets | `targetList=aarch64,armv7` (in `tauri.settings.gradle`) | Matches the ABI list above |
+
+**The OOM problem:** `npx tauri android build` fires everything at once — `beforeBuildCommand` (Vite) + `cargo build` for all Android targets (via Gradle RustPlugin) + Gradle APK packaging. With ~8GB free RAM and the Rust cross-compiler consuming multiple GB per target, the combined peak exceeds available memory and the OOM killer terminates the process.
+
+**Staged build workaround (attempted but still OOM'd):** Build one Rust target at a time via `cargo build --target <target>` directly, then run Gradle separately for packaging. Still tight on memory.
+
+### Build commands
+
+```bash
+# Release APK (unsigned — won't install without signing)
+source ~/.cargo/env && cd /opt/openclaude-src/cinny-desktop && \
+  ANDROID_HOME=/opt/android-sdk \
+  ANDROID_SDK_ROOT=/opt/android-sdk \
+  NDK_HOME=/opt/android-sdk/ndk/27.0.12077973 \
+  npx tauri android build
+
+# Debug APK (auto-signed — installable for testing)
+source ~/.cargo/env && cd /opt/openclaude-src/cinny-desktop && \
+  ANDROID_HOME=/opt/android-sdk \
+  ANDROID_SDK_ROOT=/opt/android-sdk \
+  NDK_HOME=/opt/android-sdk/ndk/27.0.12077973 \
+  npx tauri android build --debug
+```
+
+### APK output
+
+| Variant | Path | Signed? |
+|---------|------|---------|
+| Release (universal) | `src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk` | No — must sign before install |
+| Debug | `src-tauri/gen/android/app/build/outputs/apk/debug/app-debug.apk` | Yes (debug keystore) |
+
+### Signing a release APK for testing
+
+When the debug build won't complete (OOM during Gradle + Rust simultaneously) but the release APK already exists, sign the release APK with a debug keystore:
+
+```bash
+# 1. Generate a one-time debug keystore (skip if ~/.android/debug.keystore already exists)
+keytool -genkeypair -v -keystore debug.keystore \
+  -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+  -dname "CN=Android Debug,O=Android,C=US" \
+  -storepass android -keypass android
+
+# 2. Sign the unsigned release APK
+apksigner sign --ks debug.keystore --ks-pass pass:android \
+  --ks-key-alias androiddebugkey --key-pass pass:android \
+  --out app-debug-signed.apk \
+  src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
+
+# 3. Verify signature
+apksigner verify app-debug-signed.apk
+```
+
+A debug-signed APK installs and runs fine for testing. The only difference from a true debug build is `android:debuggable` won't be set in the manifest (so USB debugging / logcat won't attach), but the app runs normally.
+
+Tool paths on this machine:
+- `keytool`: `/opt/jdk-21.0.10+7/bin/keytool`
+- `apksigner`: `/opt/android-sdk/build-tools/35.0.0/apksigner`
+
+### Current state (2026-05-12)
+
+Android support is **uncommitted** — all changes are staged in the working tree:
+
+| File | Status | What changed |
+|------|--------|-------------|
+| `src-tauri/Cargo.toml` | Modified | Added `tauri-plugin-mobile-push = "0.1"` |
+| `src-tauri/Cargo.lock` | Modified | Updated for new deps |
+| `src-tauri/src/lib.rs` | Modified | Added `#[cfg_attr(mobile, tauri::mobile_entry_point)]`, made plugins conditional on `#[cfg(not(mobile))]`, added mobile-only plugins |
+| `src-tauri/capabilities/desktop.json` | Modified | Moved `global-shortcut` perms here from migrated |
+| `src-tauri/capabilities/migrated.json` | Modified | Removed `global-shortcut` perms (desktop-only) |
+| `src-tauri/capabilities/mobile.json` | **New** | Mobile capability permissions (iOS + Android) |
+| `src-tauri/gen/android/` | **New** | 205 generated files (Kotlin, Gradle, XML, resources) |
+| `src-tauri/gen/schemas/android-schema.json` | **New** | Android-specific schema |
+| `src-tauri/gen/schemas/mobile-schema.json` | **New** | Mobile-specific schema |
+| `cinny` (submodule) | Modified | Untracked changes inside submodule |
+
+The release APK was built successfully at 119MB (universal, all 4 ABIs), but **won't install** because it's unsigned. The debug build (auto-signed) is the correct target for testing.
+
+### Known issues
+
+1. **Unsigned release APK won't install.** Android requires all APKs to be signed. Debug builds are auto-signed with a debug keystore. For release: sign with `apksigner` or `jarsigner` using a proper keystore.
+
+2. **OOM during build.** The combined Rust + Gradle memory peak exceeds available RAM. Build with `CARGO_BUILD_JOBS=1` (or staged: one target at a time).
+
+3. **`tauri-plugin-mobile-push = "0.1"` in Cargo.toml** — this crate may not exist on crates.io. Verify it's a valid dependency.
+
+4. **The `--debug` flag for `npx tauri android build`** produces an `app-debug.apk` with debug signing. This is the go-to for device testing.
+
+### Iteration (edit → test on device)
+
+1. Edit source in `cinny/src/` or `src-tauri/`
+2. Run the debug build command (see above)
+3. Copy `app-debug.apk` to Android device
+4. Install and launch
+
 ### Iteration (Linux → Windows)
 
 1. Edit source in `cinny/src/` or `src-tauri/`
