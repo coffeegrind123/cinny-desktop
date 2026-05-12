@@ -138,9 +138,29 @@ This build runs on a **21GB RAM machine with 6GB swap**. The `src-tauri/target/`
 1. **Always `cargo clean` before every build** — frees 7-16GB of stale artifacts.
 2. **Always `CARGO_BUILD_JOBS=1`** — the Gradle RustPlugin spawns a separate `cargo build` for each ABI (4 targets). Without this, 4 parallel cargo instances each using all 12 cores saturate CPU and RAM simultaneously. With `CARGO_BUILD_JOBS=1`, each cargo instance is single-threaded so the 4 instances combined use ~4 cores instead of 48.
 
+**Killing stale build processes (if OOM or interruption leaves orphans):**
+
+The Gradle RustPlugin spawns `cargo`, `rustc`, and `cc` child processes that survive the parent being killed. An OOM'd or interrupted build can leave 4+ cargo instances running in the background, each consuming CPU and RAM. Check and kill them before retrying:
+
+```bash
+# Check for stale build processes
+ps aux | grep -E "cargo.*cinny|rustc.*cinny|tauri android" | grep -v grep
+
+# Kill all stale build processes
+pkill -f "cargo build.*cinny" 2>/dev/null
+pkill -f "tauri android build" 2>/dev/null
+# If processes persist (D state = stuck in kernel), force kill:
+kill -9 $(pgrep -f "cargo.*cinny") 2>/dev/null
+```
+
+Also check `free -h` before building — if swap is full (>5GB used), something else is leaking. Common culprits: Chrome (browser MCP, ~400MB), Ghidra (JVM with `-Xmx4g`), old Gradle daemons. The Bun process for openclaude itself uses ~800MB RSS.
+
 **Before every build:**
 
 ```bash
+# Kill any stale processes from previous failed builds first
+pkill -f "cargo build.*cinny" 2>/dev/null
+
 cd /opt/openclaude-src/cinny-desktop/src-tauri
 cargo clean                          # frees 7-16GB
 rm -rf gen/android/app/build         # clean Gradle build output
