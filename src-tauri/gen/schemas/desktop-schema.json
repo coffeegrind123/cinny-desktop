@@ -6513,6 +6513,48 @@
           "markdownDescription": "Denies the fetch_send command without any pre-configured scope."
         },
         {
+          "description": "Default permissions for the mobile-push plugin\n#### This default permission set includes:\n\n- `allow-request-permission`\n- `allow-get-token`\n- `allow-register-listener`",
+          "type": "string",
+          "const": "mobile-push:default",
+          "markdownDescription": "Default permissions for the mobile-push plugin\n#### This default permission set includes:\n\n- `allow-request-permission`\n- `allow-get-token`\n- `allow-register-listener`"
+        },
+        {
+          "description": "Allows retrieving the push notification device token",
+          "type": "string",
+          "const": "mobile-push:allow-get-token",
+          "markdownDescription": "Allows retrieving the push notification device token"
+        },
+        {
+          "description": "Enables the register_listener command without any pre-configured scope.",
+          "type": "string",
+          "const": "mobile-push:allow-register-listener",
+          "markdownDescription": "Enables the register_listener command without any pre-configured scope."
+        },
+        {
+          "description": "Allows requesting push notification permission",
+          "type": "string",
+          "const": "mobile-push:allow-request-permission",
+          "markdownDescription": "Allows requesting push notification permission"
+        },
+        {
+          "description": "Denies the get_token command without any pre-configured scope.",
+          "type": "string",
+          "const": "mobile-push:deny-get-token",
+          "markdownDescription": "Denies the get_token command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the register_listener command without any pre-configured scope.",
+          "type": "string",
+          "const": "mobile-push:deny-register-listener",
+          "markdownDescription": "Denies the register_listener command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the request_permission command without any pre-configured scope.",
+          "type": "string",
+          "const": "mobile-push:deny-request-permission",
+          "markdownDescription": "Denies the request_permission command without any pre-configured scope."
+        },
+        {
           "description": "This permission set configures which\nnotification features are by default exposed.\n\n#### Granted Permissions\n\nIt allows all notification related features.\n\n\n#### This default permission set includes:\n\n- `allow-is-permission-granted`\n- `allow-request-permission`\n- `allow-notify`\n- `allow-register-action-types`\n- `allow-register-listener`\n- `allow-cancel`\n- `allow-get-pending`\n- `allow-remove-active`\n- `allow-get-active`\n- `allow-check-permissions`\n- `allow-show`\n- `allow-batch`\n- `allow-list-channels`\n- `allow-delete-channel`\n- `allow-create-channel`\n- `allow-permission-state`",
           "type": "string",
           "const": "notification:default",

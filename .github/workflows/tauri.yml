@@ -225,6 +225,8 @@ jobs:
     if: always()
     needs: [windows-x86_64, linux-x86_64, macos-universal, android]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
