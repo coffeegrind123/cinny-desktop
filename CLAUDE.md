@@ -133,10 +133,13 @@ Also run `source ~/.cargo/env` before building (shell state not preserved betwee
 
 This build runs on a **21GB RAM machine with 6GB swap**. The `src-tauri/target/` directory accumulates 15+ GB of stale artifacts. When swap is full, the combined Rust + Gradle build triggers OOM (exit 137).
 
-**The two rules that prevent OOM:**
+**The three rules that prevent OOM:**
 
 1. **Always `cargo clean` before every build** — frees 7-16GB of stale artifacts.
-2. **Always `CARGO_BUILD_JOBS=1`** — the Gradle RustPlugin spawns a separate `cargo build` for each ABI (4 targets). Without this, 4 parallel cargo instances each using all 12 cores saturate CPU and RAM simultaneously. With `CARGO_BUILD_JOBS=1`, each cargo instance is single-threaded so the 4 instances combined use ~4 cores instead of 48.
+2. **Always `CARGO_BUILD_JOBS=1`** — each cargo instance is single-threaded, so compilation uses ~1 core instead of all 12.
+3. **Serialized `rustBuild*` tasks via `mustRunAfter` in `RustPlugin.kt`** — this is the critical fix. By default, Gradle runs all 4 `rustBuild*` tasks (one per ABI) in parallel. Even with `CARGO_BUILD_JOBS=1`, parallel cargo instances reach the linking step at overlapping times, and each linker consumes several GB of RAM. The `mustRunAfter` chain forces them to run one at a time (aarch64 → armv7 → i686 → x86_64), so only one linker is active at any moment. Total Rust time with serial builds: ~9 minutes (vs OOM in parallel). See `src-tauri/gen/android/buildSrc/.../RustPlugin.kt:63-69`.
+
+**Note on `abiList`/`targetList` in `gradle.properties`:** These were found to be **ignored** in practice — the build compiled all 4 ABIs regardless of the property values. The serialization fix in `RustPlugin.kt` is what actually controls build behavior. The properties are left in `gradle.properties` as documentation of intent.
 
 **Killing stale build processes (if OOM or interruption leaves orphans):**
 
@@ -164,6 +167,7 @@ pkill -f "cargo build.*cinny" 2>/dev/null
 cd /opt/openclaude-src/cinny-desktop/src-tauri
 cargo clean                          # frees 7-16GB
 rm -rf gen/android/app/build         # clean Gradle build output
+rm -rf gen/android/buildSrc/build    # clean Gradle buildSrc (needed after RustPlugin.kt changes)
 ```
 
 The Gradle JVM heap is capped at 2GB (`-Xmx2048m` in `gradle.properties`). This is intentional — keep the constraint.
@@ -218,7 +222,9 @@ The keystore is at the repo root (`debug.keystore`) and is `.gitignore`d — nev
 4. Each target's `libapp_lib.so` is symlinked into `jniLibs/<abi>/`
 5. Gradle packages the APK (or AAB — also produced)
 
-The build compiles 4 ABIs by default (arm64-v8a, armeabi-v7a, x86, x86_64) producing a "universal" APK. The `gradle.properties` `abiList` and `tauri.settings.gradle` `targetList` can restrict this, but the default universal build works and is what we ship.
+The build compiles 4 ABIs by default (arm64-v8a, armeabi-v7a, x86, x86_64) producing a "universal" APK. The `gradle.properties` `abiList` and `targetList` were found to be **ignored** — the Tauri CLI always passes all 4 targets regardless. To control which ABIs are built, modify the hardcoded lists in `RustPlugin.kt` directly.
+
+**Serial build ordering:** `RustPlugin.kt` uses `mustRunAfter` constraints to serialize the 4 `rustBuild*` tasks. Without this, Gradle runs them in parallel and multiple linkers exhaust 21GB RAM → OOM. Each task waits for the previous one to finish before starting.
 
 ### APK output
 
@@ -250,8 +256,14 @@ This was previously `"false"` for release builds, causing `ERR_CLEARTEXT_NOT_PER
 | `src-tauri/gen/android/app/build.gradle.kts` | `usesCleartextTraffic`, minSdk/targetSdk, build types |
 | `src-tauri/gen/android/gradle.properties` | JVM heap, ABI list |
 | `src-tauri/gen/android/tauri.settings.gradle` | Rust target list |
-| `src-tauri/gen/android/buildSrc/.../RustPlugin.kt` | Gradle→cargo bridge |
+| `src-tauri/gen/android/buildSrc/.../RustPlugin.kt` | Gradle→cargo bridge, `mustRunAfter` serialization |
+| `src-tauri/gen/android/app/src/main/java/.../UnifiedPushPlugin.kt` | UnifiedPush Tauri plugin (Android) |
+| `src-tauri/gen/android/app/src/main/java/.../UnifiedPushReceiver.kt` | UP MessagingReceiver (Android) |
+| `src-tauri/gen/android/settings.gradle` | JitPack repo for UP connector |
 | `src-tauri/tauri.conf.json` | `beforeBuildCommand`, `frontendDist`, bundle identifier |
+| `cinny/src/app/hooks/useUnifiedPush.ts` | UP registration + Matrix pusher hook |
+| `cinny/src/app/utils/mobile-push.ts` | UP Tauri command wrappers |
+| `cinny/src/index.css` | Safe-area padding for device notches |
 | `.gitignore` | Excludes `*.apk`, `*.idsig`, `debug.keystore` |
 
 ### Iteration (edit → test on device)
