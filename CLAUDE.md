@@ -245,6 +245,36 @@ manifestPlaceholders["usesCleartextTraffic"] = "true"
 
 This was previously `"false"` for release builds, causing `ERR_CLEARTEXT_NOT_PERMITTED` in the WebView.
 
+### Foreground service (GrapheneOS background notifications)
+
+On de-Googled devices without FCM, Android kills background apps aggressively. A foreground service with a persistent notification keeps the process alive so the Matrix WebSocket stays connected.
+
+**Architecture:**
+
+```
+JS: startForegroundService()
+  → plugin:foreground|start_foreground
+  → ForegroundServicePlugin.kt (Tauri plugin)
+  → ForegroundService.kt (Android Service with startForeground())
+  → Persistent notification "Cinny - Connected to Matrix"
+```
+
+**Startup:** The foreground service starts automatically in `useUnifiedPush.ts` when the Matrix client connects. On cleanup (client stop), it stops the service.
+
+**Permissions required:**
+- `FOREGROUND_SERVICE` — to start a foreground service
+- `FOREGROUND_SERVICE_DATA_SYNC` — Android 14+ foreground service type
+- `POST_NOTIFICATIONS` — to show the persistent notification (Android 13+)
+
+**Files:**
+| File | Role |
+|------|------|
+| `ForegroundService.kt` | Android Service, creates notification channel, calls `startForeground()` |
+| `ForegroundServicePlugin.kt` | Tauri plugin with `startForeground`/`stopForeground`/`isForegroundRunning` commands |
+| `ForegroundService.kt` notification channel | `cinny_foreground`, IMPORTANCE_LOW, no badge |
+
+**To disable:** Remove `await startForegroundService()` from `useUnifiedPush.ts:67`. Users with FCM don't need it.
+
 ### Key files (Android)
 
 | File | Role |
@@ -259,6 +289,9 @@ This was previously `"false"` for release builds, causing `ERR_CLEARTEXT_NOT_PER
 | `src-tauri/gen/android/buildSrc/.../RustPlugin.kt` | Gradle→cargo bridge, `mustRunAfter` serialization |
 | `src-tauri/gen/android/app/src/main/java/.../UnifiedPushPlugin.kt` | UnifiedPush Tauri plugin (Android) |
 | `src-tauri/gen/android/app/src/main/java/.../UnifiedPushReceiver.kt` | UP MessagingReceiver (Android) |
+| `src-tauri/gen/android/app/src/main/java/.../ForegroundService.kt` | Foreground service for background WebSocket (GrapheneOS) |
+| `src-tauri/gen/android/app/src/main/java/.../ForegroundServicePlugin.kt` | Foreground service Tauri plugin (start/stop from JS) |
+| `src-tauri/gen/android/app/src/main/AndroidManifest.xml` | Permissions, service/receiver declarations |
 | `src-tauri/gen/android/settings.gradle` | JitPack repo for UP connector |
 | `src-tauri/tauri.conf.json` | `beforeBuildCommand`, `frontendDist`, bundle identifier |
 | `cinny/src/app/hooks/useUnifiedPush.ts` | UP registration + Matrix pusher hook |
