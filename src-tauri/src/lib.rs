@@ -22,6 +22,20 @@ fn unifiedpush_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
         .build()
 }
 
+fn foreground_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
+    tauri::plugin::Builder::new("foreground")
+        .setup(|_app, api| {
+            #[cfg(target_os = "android")]
+            {
+                let _handle = api.register_android_plugin("in.cinny.app", "ForegroundServicePlugin")?;
+            }
+            #[cfg(not(target_os = "android"))]
+            let _ = &api;
+            Ok(())
+        })
+        .build()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let port: u16 = 44548;
@@ -38,7 +52,8 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(unifiedpush_plugin());
+        .plugin(unifiedpush_plugin())
+        .plugin(foreground_plugin());
 
     #[cfg(not(mobile))]
     {
