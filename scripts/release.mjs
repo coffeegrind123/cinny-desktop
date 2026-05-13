@@ -35,6 +35,7 @@ async function createTauriRelease() {
   const linuxX86_64 = {};
   const darwinX86_64 = {};
   const darwinAarch64 = {};
+  const android = {};
 
   const promises = latestAssets.map(async (asset) => {
     const { name, browser_download_url } = asset;
@@ -78,6 +79,16 @@ async function createTauriRelease() {
       darwinX86_64.signature = await getAssetSign(browser_download_url);
       darwinAarch64.signature = await getAssetSign(browser_download_url);
     }
+
+    // Android: universal APK
+    if (/cinny-android-universal\.apk$/.test(name)) {
+      android.url = browser_download_url;
+      android.version = latestTag.name;
+    }
+    if (/cinny-android-universal\.apk\.sha256$/.test(name)) {
+      const sha256Text = await getAssetSign(browser_download_url);
+      android.sha256 = sha256Text.split(/\s+/)[0];
+    }
   });
 
   await Promise.allSettled(promises);
@@ -100,6 +111,9 @@ async function createTauriRelease() {
 
   if (darwinAarch64.url) releaseData.platforms["darwin-aarch64"] = darwinAarch64;
   else console.log('No darwin-aarch64 updater artifact (signing key not configured)');
+
+  if (android.url) releaseData.platforms["android"] = android;
+  else console.log('No android updater artifact');
 
   // Get or create the "tauri" release used as updater metadata storage
   let tauriRelease;
