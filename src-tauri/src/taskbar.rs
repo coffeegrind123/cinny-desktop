@@ -4,7 +4,7 @@ mod win {
     use windows::core::PCWSTR;
     use windows::Win32::UI::Shell::{ITaskbarList3, TaskbarList};
     use windows::Win32::System::Com::{CoCreateInstance, CLSCTX_INPROC_SERVER};
-    use windows::Win32::UI::WindowsAndMessaging::{LoadImageW, IMAGE_ICON, LR_LOADFROMFILE, HICON, HINSTANCE};
+    use windows::Win32::UI::WindowsAndMessaging::{LoadImageW, IMAGE_ICON, LR_LOADFROMFILE, HICON};
     use windows::Win32::Foundation::HWND;
 
     thread_local! {
@@ -47,7 +47,10 @@ mod win {
         let _ = std::fs::remove_file(&path);
 
         match handle {
-            Ok(h) if h.0 != 0 => Some(HICON(h.0 as *mut _)),
+            Ok(h) if !h.is_invalid() => {
+                let raw: isize = h.0.try_into().ok()?;
+                if raw != 0 { Some(HICON(raw as *mut _)) } else { None }
+            },
             _ => None,
         }
     }

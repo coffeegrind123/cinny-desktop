@@ -64,8 +64,11 @@ function replaceInFile(filePath) {
       'coffeegrind123/prinny-client'
     );
 
-    // Android package — change everywhere consistently
-    content = content.replace(/in\.cinny\.app/g, 'in.prinny.app');
+    // Android package identifier stays as in.cinny.app in config files
+    // because Tauri CLI reads it before beforeBuildCommand runs.
+    // Only user-facing strings (app_name, notifications) are renamed.
+    // NOTE: do NOT rename identifier in tauri.conf.json or
+    // namespace/applicationId in build.gradle.kts.
 
     // Android notification channel IDs
     content = content.replace(/\bcinny_foreground\b/g, 'prinny_foreground');

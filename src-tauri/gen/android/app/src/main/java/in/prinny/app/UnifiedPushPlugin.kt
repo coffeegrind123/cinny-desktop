@@ -1,4 +1,4 @@
-package `in`.cinny.app
+package `in`.prinny.app
 
 import android.Manifest
 import android.app.Activity
