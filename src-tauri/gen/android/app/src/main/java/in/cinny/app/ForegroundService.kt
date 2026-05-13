@@ -9,7 +9,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
 import android.net.Network
@@ -19,17 +18,14 @@ import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
-import androidx.preference.PreferenceManager
 
 /**
  * Foreground service that keeps the Matrix WebSocket alive in the background.
+ * Required on de-Googled devices (GrapheneOS) without FCM.
  *
- * Pattern taken from FairEmail's ServiceSynchronize:
- * - Persistent notification on IMPORTANCE_MIN channel (collapsed, no sound/icon)
- * - FLAG_NO_CLEAR prevents accidental dismissal
- * - ConnectivityManager callback detects network changes (WiFi → mobile, etc.)
- * - AlarmManager watchdog wakes the service every 15 min to prevent silent death
- * - User can enable background_service mode to hide the notification entirely
+ * - IMPORTANCE_LOW channel: visible status bar icon, no sound/vibration
+ * - Network change detection: restarts on WiFi ↔ mobile switch
+ * - AlarmManager watchdog: wakes every 15 min to survive doze kills
  */
 class ForegroundService : Service() {
 
@@ -60,14 +56,9 @@ class ForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        startWithForeground(this)
 
-        if (isBackgroundService(this)) {
-            stopForeground(true)
-        } else {
-            startWithForeground(this)
-        }
-
-        // Listen for network changes (FairEmail pattern)
+        // Listen for network changes
         val cm = getSystemService(ConnectivityManager::class.java)
         val builder = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -90,11 +81,7 @@ class ForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (isBackgroundService(this)) {
-            stopForeground(true)
-        } else {
-            startWithForeground(this)
-        }
+        startWithForeground(this)
         isRunning = true
         return START_STICKY
     }
@@ -112,10 +99,8 @@ class ForegroundService : Service() {
             try { unregisterReceiver(it) } catch (_: Exception) {}
         }
 
-        // Reschedule watchdog before dying so we come back
-        if (!isBackgroundService(this)) {
-            scheduleWatchdog(this)
-        }
+        // Reschedule watchdog so we come back after doze kills
+        scheduleWatchdog(this)
 
         super.onDestroy()
     }
@@ -125,10 +110,10 @@ class ForegroundService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Background service",
-                NotificationManager.IMPORTANCE_MIN // FairEmail: collapsed, no sound
+                NotificationManager.IMPORTANCE_LOW // visible icon, no sound — appropriate for IM
             ).apply {
                 description = "Shown when Cinny keeps the Matrix connection alive. " +
-                    "Disable this channel to hide the notification; the service will continue running."
+                    "Disable this channel in system settings to hide the notification."
                 setShowBadge(false)
             }
             val manager = getSystemService(NotificationManager::class.java)
@@ -155,7 +140,6 @@ class ForegroundService : Service() {
                 .setContentIntent(openIntent)
                 .setShowWhen(false)
                 .setCategory(Notification.CATEGORY_SERVICE)
-                .setVisibility(Notification.VISIBILITY_SECRET)
                 .build()
             n.flags = n.flags or Notification.FLAG_NO_CLEAR
             return n
@@ -180,9 +164,7 @@ class ForegroundService : Service() {
      */
     inner class ConnectionChangedReceiver : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (!isBackgroundService(this@ForegroundService)) {
-                startWithForeground(this@ForegroundService)
-            }
+            startWithForeground(this@ForegroundService)
         }
     }
 
@@ -201,12 +183,9 @@ class ForegroundService : Service() {
 
         /**
          * Periodic alarm that restarts the service if Android killed it during
-         * doze or due to memory pressure. FairEmail uses the same pattern
-         * with setAndAllowWhileIdle.
+         * doze or due to memory pressure.
          */
         fun scheduleWatchdog(context: Context) {
-            if (isBackgroundService(context)) return
-
             val am = context.getSystemService(AlarmManager::class.java) ?: return
             val intent = Intent(context, ForegroundService::class.java)
             val pi = PendingIntent.getService(
@@ -218,14 +197,6 @@ class ForegroundService : Service() {
             try {
                 am.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, trigger, pi)
             } catch (_: Exception) {}
-        }
-
-        fun isBackgroundService(context: Context): Boolean {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-                val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-                return prefs.getBoolean("background_service", false)
-            }
-            return false // Android 8+ uses channel settings instead
         }
     }
 }
