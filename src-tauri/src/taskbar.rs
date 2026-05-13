@@ -4,7 +4,9 @@ mod win {
     use windows::core::PCWSTR;
     use windows::Win32::UI::Shell::{ITaskbarList3, TaskbarList};
     use windows::Win32::System::Com::{CoCreateInstance, CLSCTX_INPROC_SERVER};
-    use windows::Win32::UI::WindowsAndMessaging::{LoadImageW, IMAGE_ICON, LR_LOADFROMFILE, HICON};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        LoadImageW, IMAGE_ICON, LR_LOADFROMFILE, HICON,
+    };
     use windows::Win32::Foundation::HWND;
 
     thread_local! {
@@ -15,7 +17,8 @@ mod win {
         TASKBAR.with(|cell| {
             if cell.borrow().is_none() {
                 unsafe {
-                    *cell.borrow_mut() = CoCreateInstance(&TaskbarList, None, CLSCTX_INPROC_SERVER).ok();
+                    *cell.borrow_mut() =
+                        CoCreateInstance(&TaskbarList, None, CLSCTX_INPROC_SERVER).ok();
                 }
             }
             cell.borrow().clone()
@@ -47,15 +50,21 @@ mod win {
         let _ = std::fs::remove_file(&path);
 
         match handle {
-            Ok(h) if !h.is_invalid() => {
-                let raw: isize = h.0.try_into().ok()?;
-                if raw != 0 { Some(HICON(raw as *mut _)) } else { None }
-            },
-            _ => None,
+            Ok(h) => {
+                // h.0 is HANDLE(*mut c_void). Check != null, then cast to HICON.
+                let p: *mut std::ffi::c_void = h.0;
+                if p.is_null() {
+                    None
+                } else {
+                    Some(HICON(p))
+                }
+            }
+            Err(_) => None,
         }
     }
 
-    pub fn set_overlay(hwnd: HWND, icon_data: Option<&[u8]>) {
+    /// hwnd_raw: raw HWND as isize (from tauri::Window::hwnd())
+    pub fn set_overlay(hwnd_raw: isize, icon_data: Option<&[u8]>) {
         let taskbar = match get_taskbar() {
             Some(tb) => tb,
             None => return,
@@ -63,11 +72,11 @@ mod win {
 
         let hicon = icon_data
             .and_then(|data| load_icon_from_bytes(data))
-            .unwrap_or(HICON::default());
+            .unwrap_or(HICON(std::ptr::null_mut()));
 
         unsafe {
             let _ = taskbar.SetOverlayIcon(
-                hwnd,
+                HWND(hwnd_raw as *mut _),
                 hicon,
                 PCWSTR::null(),
             );
