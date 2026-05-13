@@ -36,11 +36,21 @@ fn foreground_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
         .build()
 }
 
+#[tauri::command]
+fn set_badge_count(window: tauri::Window, count: u32) {
+    if count > 0 {
+        let _ = window.set_badge_count(Some(count.into()));
+    } else {
+        let _ = window.set_badge_count(None::<i64>);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let port: u16 = 44548;
     let context = tauri::generate_context!();
     let mut builder = tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![set_badge_count])
         .plugin(tauri_plugin_localhost::Builder::new(port).build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
