@@ -4,7 +4,7 @@ mod win {
     use windows::core::PCWSTR;
     use windows::Win32::UI::Shell::{ITaskbarList3, TaskbarList};
     use windows::Win32::System::Com::{CoCreateInstance, CLSCTX_INPROC_SERVER};
-    use windows::Win32::UI::WindowsAndMessaging::{LoadImageW, IMAGE_ICON, LR_LOADFROMFILE, HICON};
+    use windows::Win32::UI::WindowsAndMessaging::{LoadImageW, IMAGE_ICON, LR_LOADFROMFILE, HICON, HINSTANCE};
     use windows::Win32::Foundation::HWND;
 
     thread_local! {
@@ -47,12 +47,12 @@ mod win {
         let _ = std::fs::remove_file(&path);
 
         match handle {
-            Ok(h) if h.0 != 0 => Some(HICON(h.0)),
+            Ok(h) if h.0 != 0 => Some(HICON(h.0 as *mut _)),
             _ => None,
         }
     }
 
-    pub fn set_overlay(hwnd: isize, icon_data: Option<&[u8]>) {
+    pub fn set_overlay(hwnd: HWND, icon_data: Option<&[u8]>) {
         let taskbar = match get_taskbar() {
             Some(tb) => tb,
             None => return,
@@ -64,7 +64,7 @@ mod win {
 
         unsafe {
             let _ = taskbar.SetOverlayIcon(
-                HWND(hwnd as *mut _),
+                hwnd,
                 hicon,
                 PCWSTR::null(),
             );

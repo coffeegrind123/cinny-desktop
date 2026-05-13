@@ -2,11 +2,11 @@
  * Pre-build: rename Cinny → Prinny across the entire project.
  *
  * Runs as beforeBuildCommand. Modifies source in-place so the Tauri build
- * compiles with "Prinny" branding. Also renames Android package directories.
+ * compiles with "Prinny" branding. Also renames Android package directory.
  *
  * Revert:  git checkout -- . && cd cinny && git checkout -- .
  */
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync, renameSync, unlinkSync } from 'node:fs';
 import { join, extname, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -32,10 +32,23 @@ const SKIP_FILES = new Set([
   'accountData.ts', // Matrix protocol constant
 ]);
 
-// ── Phase 0: NO directory rename ───────────────────────────────────
-// Android package directory (in/cinny/app/) must stay as-is because
-// WRY/Tauri expects generated Kotlin files at the original path.
-// Only applicationId, namespace, and user-facing strings change.
+// ── Phase 0: rename Android package directory ──────────────────────
+
+function renameAndroidPackageDir() {
+  const javaRoot = join(ROOT, 'src-tauri', 'gen', 'android', 'app', 'src', 'main', 'java', 'in');
+  const oldDir = join(javaRoot, 'cinny');
+  const newDir = join(javaRoot, 'prinny');
+  if (existsSync(oldDir) && !existsSync(newDir)) {
+    renameSync(oldDir, newDir);
+    console.log(`  [dir] in/cinny → in/prinny`);
+  }
+  // Remove stale assets tauri.conf.json so it's regenerated fresh
+  const staleAssets = join(ROOT, 'src-tauri', 'gen', 'android', 'app', 'src', 'main', 'assets', 'tauri.conf.json');
+  if (existsSync(staleAssets)) {
+    unlinkSync(staleAssets);
+    console.log(`  [del] stale assets/tauri.conf.json`);
+  }
+}
 
 // ── Phase 1: file content replacements ─────────────────────────────
 
@@ -45,17 +58,14 @@ function replaceInFile(filePath) {
     let content = readFileSync(filePath, 'utf8');
     let original = content;
 
-    // Specific patterns (order matters — most specific first)
-
-    // Repo URLs (safety net — should already be correct in source)
+    // Repo URLs
     content = content.replace(
       /coffeegrind123\/cinny-desktop/g,
       'coffeegrind123/prinny-client'
     );
 
-    // Android applicationId and namespace (build.gradle.kts)
-    // NOT the Kotlin package statement — must match directory structure
-    content = content.replace(/(applicationId|namespace)\s*=\s*"in\.cinny\.app"/g, '$1 = "in.prinny.app"');
+    // Android package — change everywhere consistently
+    content = content.replace(/in\.cinny\.app/g, 'in.prinny.app');
 
     // Android notification channel IDs
     content = content.replace(/\bcinny_foreground\b/g, 'prinny_foreground');
@@ -64,19 +74,15 @@ function replaceInFile(filePath) {
     // Android theme
     content = content.replace(/Theme\.cinny\b/g, 'Theme.prinny');
 
-    // Kotlin APK filename template
+    // Kotlin APK filename
     content = content.replace(/"cinny-v\$/g, '"prinny-v$');
 
-    // Tauri config JSON values
-    // NOTE: mainBinaryName stays "cinny" — Tauri reads it before
-    // the script runs and will fail to find a renamed binary.
-    // Cargo package name also stays "cinny" for the same reason.
+    // Tauri config
     content = content.replace(/"productName"\s*:\s*"Cinny"/g, '"productName": "Prinny"');
-    content = content.replace(/"identifier"\s*:\s*"in\.cinny\.app"/g, '"identifier": "in.prinny.app"');
 
-    // General replacements — title case and all caps only.
-    // Lowercase "cinny" is NOT blanket-replaced because it appears in
-    // directory paths (cd cinny, ../cinny/dist) that must stay unchanged.
+    // General case-sensitive — title case and all caps only.
+    // Lowercase "cinny" is NOT blanket-replaced because it appears
+    // in directory paths (cd cinny, ../cinny/dist).
     content = content.replace(/\bCinny\b/g, 'Prinny');
     content = content.replace(/\bCINNY\b/g, 'PRINNY');
 
@@ -118,5 +124,6 @@ function walk(dir) {
 // ── Main ────────────────────────────────────────────────────────────
 
 console.log('[prinny] Renaming Cinny → Prinny...');
+renameAndroidPackageDir();
 const changed = walk(ROOT);
 console.log(`[prinny] Done — ${changed} files changed.`);
