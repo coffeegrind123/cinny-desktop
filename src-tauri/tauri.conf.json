@@ -45,8 +45,8 @@
     "beforeDevCommand": "cd cinny && npm start",
     "devUrl": "http://localhost:8080"
   },
-  "productName": "Cinny",
-  "mainBinaryName": "cinny",
+  "productName": "Prinny",
+  "mainBinaryName": "prinny",
   "version": "4.11.6",
   "identifier": "in.prinny.app",
   "plugins": {

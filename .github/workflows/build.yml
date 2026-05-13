@@ -44,16 +44,16 @@ jobs:
       - name: Rename artifacts
         shell: pwsh
         run: |
-          Move-Item "src-tauri\target\release\bundle\msi\Cinny_${{ env.TAURI_VERSION }}_x64_en-US.msi" "src-tauri\target\release\bundle\msi\Cinny_desktop-x86_64.msi"
-          Move-Item "src-tauri\target\release\bundle\nsis\Cinny_${{ env.TAURI_VERSION }}_x64-setup.exe" "src-tauri\target\release\bundle\nsis\Cinny_desktop-x86_64-setup.exe"
+          Move-Item "src-tauri\target\release\bundle\msi\Prinny_${{ env.TAURI_VERSION }}_x64_en-US.msi" "src-tauri\target\release\bundle\msi\Prinny_desktop-x86_64.msi"
+          Move-Item "src-tauri\target\release\bundle\nsis\Prinny_${{ env.TAURI_VERSION }}_x64-setup.exe" "src-tauri\target\release\bundle\nsis\Prinny_desktop-x86_64-setup.exe"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cinny-windows-x86_64
+          name: prinny-windows-x86_64
           path: |
-            src-tauri/target/release/bundle/msi/Cinny_desktop-x86_64.msi
-            src-tauri/target/release/bundle/nsis/Cinny_desktop-x86_64-setup.exe
+            src-tauri/target/release/bundle/msi/Prinny_desktop-x86_64.msi
+            src-tauri/target/release/bundle/nsis/Prinny_desktop-x86_64-setup.exe
           if-no-files-found: error
 
       - name: Upload to release
@@ -63,8 +63,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
-            src-tauri/target/release/bundle/msi/Cinny_desktop-x86_64.msi
-            src-tauri/target/release/bundle/nsis/Cinny_desktop-x86_64-setup.exe
+            src-tauri/target/release/bundle/msi/Prinny_desktop-x86_64.msi
+            src-tauri/target/release/bundle/nsis/Prinny_desktop-x86_64-setup.exe
 
   # ── Linux x86_64 ────────────────────────────────────────────────
   linux-x86_64:
@@ -104,16 +104,16 @@ jobs:
 
       - name: Rename artifacts
         run: |
-          mv "src-tauri/target/release/bundle/deb/Cinny_${{ steps.vars.outputs.tag }}_amd64.deb" "src-tauri/target/release/bundle/deb/Cinny_desktop-x86_64.deb"
-          mv "src-tauri/target/release/bundle/appimage/Cinny_${{ steps.vars.outputs.tag }}_amd64.AppImage" "src-tauri/target/release/bundle/appimage/Cinny_desktop-x86_64.AppImage"
+          mv "src-tauri/target/release/bundle/deb/Prinny_${{ steps.vars.outputs.tag }}_amd64.deb" "src-tauri/target/release/bundle/deb/Prinny_desktop-x86_64.deb"
+          mv "src-tauri/target/release/bundle/appimage/Prinny_${{ steps.vars.outputs.tag }}_amd64.AppImage" "src-tauri/target/release/bundle/appimage/Prinny_desktop-x86_64.AppImage"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cinny-linux-x86_64
+          name: prinny-linux-x86_64
           path: |
-            src-tauri/target/release/bundle/deb/Cinny_desktop-x86_64.deb
-            src-tauri/target/release/bundle/appimage/Cinny_desktop-x86_64.AppImage
+            src-tauri/target/release/bundle/deb/Prinny_desktop-x86_64.deb
+            src-tauri/target/release/bundle/appimage/Prinny_desktop-x86_64.AppImage
           if-no-files-found: error
 
       - name: Upload to release
@@ -123,8 +123,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
-            src-tauri/target/release/bundle/deb/Cinny_desktop-x86_64.deb
-            src-tauri/target/release/bundle/appimage/Cinny_desktop-x86_64.AppImage
+            src-tauri/target/release/bundle/deb/Prinny_desktop-x86_64.deb
+            src-tauri/target/release/bundle/appimage/Prinny_desktop-x86_64.AppImage
 
   # ── macOS universal ─────────────────────────────────────────────
   macos-universal:
@@ -162,16 +162,16 @@ jobs:
 
       - name: Rename artifacts
         run: |
-          mv "src-tauri/target/universal-apple-darwin/release/bundle/dmg/Cinny_${{ steps.vars.outputs.tag }}_universal.dmg" "src-tauri/target/universal-apple-darwin/release/bundle/dmg/Cinny_desktop-universal.dmg"
-          mv "src-tauri/target/universal-apple-darwin/release/bundle/macos/Cinny.app.tar.gz" "src-tauri/target/universal-apple-darwin/release/bundle/macos/Cinny_desktop-universal.app.tar.gz"
+          mv "src-tauri/target/universal-apple-darwin/release/bundle/dmg/Prinny_${{ steps.vars.outputs.tag }}_universal.dmg" "src-tauri/target/universal-apple-darwin/release/bundle/dmg/Prinny_desktop-universal.dmg"
+          mv "src-tauri/target/universal-apple-darwin/release/bundle/macos/Prinny.app.tar.gz" "src-tauri/target/universal-apple-darwin/release/bundle/macos/Prinny_desktop-universal.app.tar.gz"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cinny-macos-universal
+          name: prinny-macos-universal
           path: |
-            src-tauri/target/universal-apple-darwin/release/bundle/dmg/Cinny_desktop-universal.dmg
-            src-tauri/target/universal-apple-darwin/release/bundle/macos/Cinny_desktop-universal.app.tar.gz
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/Prinny_desktop-universal.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/Prinny_desktop-universal.app.tar.gz
           if-no-files-found: error
 
       - name: Upload to release
@@ -181,8 +181,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
-            src-tauri/target/universal-apple-darwin/release/bundle/dmg/Cinny_desktop-universal.dmg
-            src-tauri/target/universal-apple-darwin/release/bundle/macos/Cinny_desktop-universal.app.tar.gz
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/Prinny_desktop-universal.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/Prinny_desktop-universal.app.tar.gz
 
   # ── Android universal APK ───────────────────────────────────────
   android:
@@ -229,17 +229,17 @@ jobs:
           $ANDROID_HOME/build-tools/35.0.0/apksigner sign \
             --ks debug.keystore --ks-pass pass:android \
             --ks-key-alias androiddebugkey --key-pass pass:android \
-            --out cinny-android-universal.apk \
+            --out prinny-android-universal.apk \
             src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
-          sha256sum cinny-android-universal.apk > cinny-android-universal.apk.sha256
+          sha256sum prinny-android-universal.apk > prinny-android-universal.apk.sha256
 
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cinny-android-universal
+          name: prinny-android-universal
           path: |
-            cinny-android-universal.apk
-            cinny-android-universal.apk.sha256
+            prinny-android-universal.apk
+            prinny-android-universal.apk.sha256
           if-no-files-found: error
 
       - name: Upload to release
@@ -249,8 +249,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
-            cinny-android-universal.apk
-            cinny-android-universal.apk.sha256
+            prinny-android-universal.apk
+            prinny-android-universal.apk.sha256
 
   # ── Source archive ──────────────────────────────────────────────
   archive:

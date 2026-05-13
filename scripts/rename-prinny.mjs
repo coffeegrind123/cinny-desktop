@@ -82,6 +82,7 @@ function replaceInFile(filePath) {
 
     // Tauri config
     content = content.replace(/"productName"\s*:\s*"Cinny"/g, '"productName": "Prinny"');
+    content = content.replace(/"mainBinaryName"\s*:\s*"cinny"/g, '"mainBinaryName": "prinny"');
 
     // General case-sensitive — title case and all caps only.
     // Lowercase "cinny" is NOT blanket-replaced because it appears

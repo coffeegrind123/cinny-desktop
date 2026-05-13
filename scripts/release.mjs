@@ -81,11 +81,11 @@ async function createTauriRelease() {
     }
 
     // Android: universal APK
-    if (/cinny-android-universal\.apk$/.test(name)) {
+    if (/prinny-android-universal\.apk$/.test(name)) {
       android.url = browser_download_url;
       android.version = latestTag.name;
     }
-    if (/cinny-android-universal\.apk\.sha256$/.test(name)) {
+    if (/prinny-android-universal\.apk\.sha256$/.test(name)) {
       const sha256Text = await getAssetSign(browser_download_url);
       android.sha256 = sha256Text.split(/\s+/)[0];
     }
