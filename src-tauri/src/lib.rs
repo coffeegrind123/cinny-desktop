@@ -66,7 +66,7 @@ fn set_badge_count(window: tauri::Window, count: u32) {
             Some(count as usize)
         };
         if let Ok(hwnd) = window.hwnd() {
-            taskbar::set_overlay(hwnd, idx.map(|i| BADGE_ICONS[i]));
+            taskbar::set_overlay(hwnd.0 as isize, idx.map(|i| BADGE_ICONS[i]));
         }
         return;
     }
