@@ -8,7 +8,7 @@ import android.content.IntentFilter
 import android.net.Uri
 import android.os.Environment
 import android.util.Log
-import in.prinny.app.BuildConfig
+import `in`.prinny.app.BuildConfig
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader

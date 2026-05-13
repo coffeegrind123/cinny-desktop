@@ -30,12 +30,42 @@ import androidx.core.content.ContextCompat
 class ForegroundService : Service() {
 
     companion object {
-        const val CHANNEL_ID = "cinny_foreground"
+        const val CHANNEL_ID = "prinny_foreground"
         const val NOTIFICATION_ID = 1
         const val PI_WATCHDOG = 10
         const val WATCHDOG_INTERVAL_MS = 15 * 60 * 1000L // 15 minutes
         var isRunning = false
             private set
+
+        fun startWithForeground(service: ForegroundService) {
+            try {
+                service.startForeground(
+                    NOTIFICATION_ID,
+                    service.buildNotification(),
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                    else 0
+                )
+            } catch (_: Exception) {}
+        }
+
+        /**
+         * Periodic alarm that restarts the service if Android killed it during
+         * doze or due to memory pressure.
+         */
+        fun scheduleWatchdog(context: Context) {
+            val am = context.getSystemService(AlarmManager::class.java) ?: return
+            val intent = Intent(context, ForegroundService::class.java)
+            val pi = PendingIntent.getService(
+                context, PI_WATCHDOG, intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+
+            val trigger = SystemClock.elapsedRealtime() + WATCHDOG_INTERVAL_MS
+            try {
+                am.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, trigger, pi)
+            } catch (_: Exception) {}
+        }
     }
 
     private var connectivityCallback: ConnectivityManager.NetworkCallback? = null
@@ -168,35 +198,4 @@ class ForegroundService : Service() {
         }
     }
 
-    companion object {
-        fun startWithForeground(service: ForegroundService) {
-            try {
-                service.startForeground(
-                    NOTIFICATION_ID,
-                    service.buildNotification(),
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-                    else 0
-                )
-            } catch (_: Exception) {}
-        }
-
-        /**
-         * Periodic alarm that restarts the service if Android killed it during
-         * doze or due to memory pressure.
-         */
-        fun scheduleWatchdog(context: Context) {
-            val am = context.getSystemService(AlarmManager::class.java) ?: return
-            val intent = Intent(context, ForegroundService::class.java)
-            val pi = PendingIntent.getService(
-                context, PI_WATCHDOG, intent,
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            )
-
-            val trigger = SystemClock.elapsedRealtime() + WATCHDOG_INTERVAL_MS
-            try {
-                am.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, trigger, pi)
-            } catch (_: Exception) {}
-        }
-    }
 }
