@@ -1,54 +1,47 @@
 # Prinny Client <img align="right" width="90" height="128" src="src-tauri/icons/prinny-logo.png" alt="Prinny" />
 
-[![Build Status](https://github.com/coffeegrind123/cinny-desktop/actions/workflows/build.yml/badge.svg)](https://github.com/coffeegrind123/cinny-desktop/actions/workflows/build.yml)
-[![Latest Release](https://img.shields.io/github/v/release/coffeegrind123/cinny-desktop?label=latest)](https://github.com/coffeegrind123/cinny-desktop/releases/latest)
-[![Download](https://img.shields.io/github/downloads/coffeegrind123/cinny-desktop/total?label=downloads)](https://github.com/coffeegrind123/cinny-desktop/releases)
+[![Build](https://github.com/coffeegrind123/prinny-client/actions/workflows/build.yml/badge.svg)](https://github.com/coffeegrind123/prinny-client/actions/workflows/build.yml)
+[![Latest](https://img.shields.io/github/v/release/coffeegrind123/prinny-client?label=latest)](https://github.com/coffeegrind123/prinny-client/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/coffeegrind123/prinny-client/total?label=downloads)](https://github.com/coffeegrind123/prinny-client/releases)
 
-Prinny Client is a Matrix chat client packaged as a desktop and mobile app via [Tauri v2](https://v2.tauri.app). It wraps the [Cinny](https://cinny.in) web client with native integrations: desktop notifications, taskbar badges, mobile swipe gestures, background WebSocket on Android, and an in-app updater.
+A Matrix chat client that actually feels native. Prinny Client is [Cinny](https://cinny.in) packaged with [Tauri v2](https://v2.tauri.app), shipping on Windows, macOS, Linux, and Android. It does desktop notifications with proper click-to-open. It flashes the taskbar. It puts unread counts on your dock icon. On mobile there's swipe navigation like Discord. On Android it keeps the Matrix connection alive in the background so you don't miss messages on de-Googled phones.
 
-It is a hard fork of [cinnyapp/cinny-desktop](https://github.com/cinnyapp/cinny-desktop) with the frontend forked from [coffeegrind123/cinny](https://github.com/coffeegrind123/cinny) (`desktop-notifications` branch).
+Hard fork of [cinnyapp/cinny-desktop](https://github.com/cinnyapp/cinny-desktop). The frontend lives at [coffeegrind123/cinny](https://github.com/coffeegrind123/cinny) on the `desktop-notifications` branch.
 
 ## Download
 
-Installers for all platforms are published on [GitHub Releases](https://github.com/coffeegrind123/cinny-desktop/releases).
+Everything is on [GitHub Releases](https://github.com/coffeegrind123/prinny-client/releases).
 
 | Platform | Download |
 |----------|----------|
-| Windows | [MSI installer](https://github.com/coffeegrind123/cinny-desktop/releases/latest/download/Cinny_desktop-x86_64.msi) · [NSIS setup](https://github.com/coffeegrind123/cinny-desktop/releases/latest/download/Cinny_desktop-x86_64-setup.exe) |
-| macOS | [DMG](https://github.com/coffeegrind123/cinny-desktop/releases/latest/download/Cinny_desktop-universal.dmg) |
-| Linux | [AppImage](https://github.com/coffeegrind123/cinny-desktop/releases/latest/download/Cinny_desktop-x86_64.AppImage) · [deb](https://github.com/coffeegrind123/cinny-desktop/releases/latest/download/Cinny_desktop-x86_64.deb) |
-| Android | [APK](https://github.com/coffeegrind123/cinny-desktop/releases/latest/download/cinny-android-universal.apk) (sideload) |
+| Windows | [MSI](https://github.com/coffeegrind123/prinny-client/releases/latest/download/Cinny_desktop-x86_64.msi) · [NSIS setup](https://github.com/coffeegrind123/prinny-client/releases/latest/download/Cinny_desktop-x86_64-setup.exe) |
+| macOS | [DMG](https://github.com/coffeegrind123/prinny-client/releases/latest/download/Cinny_desktop-universal.dmg) |
+| Linux | [AppImage](https://github.com/coffeegrind123/prinny-client/releases/latest/download/Cinny_desktop-x86_64.AppImage) · [deb](https://github.com/coffeegrind123/prinny-client/releases/latest/download/Cinny_desktop-x86_64.deb) |
+| Android | [APK](https://github.com/coffeegrind123/prinny-client/releases/latest/download/cinny-android-universal.apk) (sideload) |
 
-The desktop app auto-updates via the built-in updater. Android checks for updates on launch and downloads new APKs automatically.
+Desktop builds update themselves. Android checks on launch and downloads new APKs when available.
 
-## Features
+## What it does
 
-* **Desktop notifications** — Native OS toasts with sender avatar, click-to-open, and taskbar flash on Windows.
-* **Taskbar unread badge** — Red badge count on the macOS Dock and Linux taskbar.
-* **Mobile swipe gestures** — Discord-style edge swipes: left-edge back from room, right-edge open room from list.
-* **Presence indicators** — Online/busy/away dots on DM avatars and in the member list.
-* **Reply highlights** — Yellow left-border on messages someone replies to.
-* **Android foreground service** — Keeps the Matrix WebSocket alive in the background on de-Googled devices (GrapheneOS).
-* **UnifiedPush** — Push notifications via UnifiedPush distributors when the app is killed.
-* **In-app updater** — Desktop: checks for updates via `release.json`. Android: native background update checker with DownloadManager.
-* **MatrixRocks** — Built-in featured community server directory with room info.
-* **E2EE-aware notifications** — Waits for decryption before sending notification content.
+Notifications work the way you'd expect. Sender avatar in the toast, click to jump to the room, taskbar flashes on Windows. E2EE rooms wait for decryption before notifying so you don't see ciphertext.
+
+The macOS Dock and Linux taskbar show an unread count badge. Red circle, number in it, clears when you're caught up.
+
+On mobile, swipe from the right edge to open a room, swipe from the left edge to go back. Same gesture Discord uses. Works on the Home, Direct, and Space screens.
+
+DM avatars and the member list show online/busy/away dots. When someone replies to your message, the replied-to message gets a yellow left border. The "New Messages" divider looks like Discord's (green line, "NEW" badge on the right). Timestamps sit next to usernames instead of floating on the far right.
+
+The Android build keeps a foreground service running so the Matrix WebSocket stays connected. This matters on GrapheneOS and other devices without FCM. The persistent notification says "Connected to Matrix" and sits at low priority so it's not annoying. UnifiedPush support means you get pings even when the app is fully killed, assuming you have a distributor installed.
+
+MatrixRocks community servers are built into the room directory. The updater checks `release.json` on desktop and uses DownloadManager on Android.
 
 ## Build
 
-### Prerequisites
-
-| Tool | Purpose |
-|------|---------|
-| [Rust](https://rustup.rs) | Tauri backend |
-| [Node.js](https://nodejs.org) ≥ 16 | Frontend build |
-| OS dev tools | Platform-specific (see below) |
-
-Clone with submodules:
+You need Rust, Node.js 16+, and platform dev tools. Clone with submodules:
 
 ```bash
-git clone --recursive https://github.com/coffeegrind123/cinny-desktop.git
-cd cinny-desktop
+git clone --recursive https://github.com/coffeegrind123/prinny-client.git
+cd prinny-client
 cd cinny && git checkout desktop-notifications && npm ci && cd ..
 npm ci
 ```
@@ -56,14 +49,11 @@ npm ci
 ### Linux
 
 ```bash
-# Install system dependencies
 sudo apt install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-
-# Build
 npm run tauri build
 ```
 
-Output: `src-tauri/target/release/bundle/` — AppImage, deb, rpm.
+Output lands in `src-tauri/target/release/bundle/` (AppImage, deb, rpm).
 
 ### macOS
 
@@ -71,25 +61,25 @@ Output: `src-tauri/target/release/bundle/` — AppImage, deb, rpm.
 npm run tauri build -- --target universal-apple-darwin
 ```
 
-Output: `src-tauri/target/universal-apple-darwin/release/bundle/` — DMG, app bundle.
+Output: `src-tauri/target/universal-apple-darwin/release/bundle/` (DMG, app bundle).
 
 ### Windows
 
 ```bash
-# From Linux (cross-compile):
+# Cross-compile from Linux:
 rustup target add x86_64-pc-windows-gnu
 sudo apt install -y mingw-w64 nsis
 npm run tauri build -- --target x86_64-pc-windows-gnu
 
-# From Windows:
+# Or on Windows directly:
 npm run tauri build
 ```
 
-Output: `src-tauri/target/release/bundle/` — MSI, NSIS installer.
+Output: `src-tauri/target/release/bundle/` (MSI, NSIS installer).
 
 ### Android
 
-Requires Android SDK 36, NDK 27.0.12077973, and Rust Android targets:
+Needs SDK 36, NDK 27.0.12077973, and four Rust targets:
 
 ```bash
 rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
@@ -100,7 +90,7 @@ export NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973
 npx tauri android build
 ```
 
-Sign the APK:
+Signing:
 
 ```bash
 keytool -genkeypair -v -keystore debug.keystore -alias androiddebugkey \
@@ -121,12 +111,12 @@ $ANDROID_HOME/build-tools/35.0.0/apksigner sign \
 npm run tauri dev
 ```
 
-This starts the Vite dev server for the frontend and launches the Tauri window. On Android, use `npx tauri android dev`.
+Runs the Vite dev server and launches a Tauri window. For Android use `npx tauri android dev`.
 
 ## Contributing
 
-This is a personal fork. Issues and PRs are welcome but there's no contribution guide — just open an issue first to discuss what you want to change.
+Personal fork. Issues and PRs welcome, no formal process. Open an issue before writing code.
 
 ## License
 
-AGPL-3.0-only — same as upstream Cinny.
+AGPL-3.0-only, same as upstream.
