@@ -71,7 +71,7 @@ fn set_badge_count(window: tauri::Window, count: u32) {
         return;
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(not(any(target_os = "windows", target_os = "android", target_os = "ios")))]
     {
         if count > 0 {
             let _ = window.set_badge_count(Some(count.into()));
