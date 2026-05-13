@@ -10,6 +10,16 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 
+/**
+ * Foreground service that keeps the Matrix WebSocket alive in the background.
+ *
+ * Pattern taken from FairEmail's ServiceSynchronize:
+ * - Persistent notification with IMPORTANCE_LOW (silent, collapsed in tray)
+ * - FLAG_NO_CLEAR prevents accidental dismissal
+ * - FOREGROUND_SERVICE_DEFAULT for proper Android 14+ behavior
+ * - User can hide the notification by disabling the channel in system settings;
+ *   the foreground service continues running regardless.
+ */
 class ForegroundService : Service() {
 
     companion object {
@@ -53,7 +63,8 @@ class ForegroundService : Service() {
                 "Background service",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shown when Cinny keeps the Matrix connection alive in the background"
+                description = "Shown when Cinny keeps the Matrix connection alive in the background. " +
+                    "Disable this channel to hide the notification; the service will continue running."
                 setShowBadge(false)
             }
             val manager = getSystemService(NotificationManager::class.java)
@@ -61,6 +72,14 @@ class ForegroundService : Service() {
         }
     }
 
+    /**
+     * Build the persistent foreground notification.
+     *
+     * FairEmail-inspired: PRIORITY_MIN (no sound/vibration), CATEGORY_SERVICE,
+     * FLAG_NO_CLEAR (non-dismissible), setShowWhen(false), VISIBILITY_SECRET
+     * (no content on lockscreen). The notification is as unobtrusive as possible
+     * while still satisfying Android's foreground service requirement.
+     */
     private fun buildNotification(): Notification {
         val openIntent = PendingIntent.getActivity(
             this,
@@ -69,23 +88,31 @@ class ForegroundService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, CHANNEL_ID)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val n = Notification.Builder(this, CHANNEL_ID)
                 .setContentTitle("Cinny")
                 .setContentText("Connected to Matrix")
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setOngoing(true)
                 .setContentIntent(openIntent)
+                .setShowWhen(false)
+                .setCategory(Notification.CATEGORY_SERVICE)
+                .setVisibility(Notification.VISIBILITY_SECRET)
                 .build()
+            n.flags = n.flags or Notification.FLAG_NO_CLEAR
+            return n
         } else {
             @Suppress("DEPRECATION")
-            Notification.Builder(this)
+            val n = Notification.Builder(this)
                 .setContentTitle("Cinny")
                 .setContentText("Connected to Matrix")
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setOngoing(true)
                 .setContentIntent(openIntent)
+                .setPriority(Notification.PRIORITY_MIN)
                 .build()
+            n.flags = n.flags or Notification.FLAG_NO_CLEAR
+            return n
         }
     }
 }
