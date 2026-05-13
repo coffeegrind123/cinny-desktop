@@ -1,16 +1,16 @@
-# cinny-desktop
+# prinny-client
 
 Cinny Matrix client packaged as a desktop app via Tauri v2. Cross-compiles to Windows from Linux using the GNU toolchain.
 
 **Repos:**
-- Desktop shell: `coffeegrind123/cinny-desktop` (this repo)
+- Desktop shell: `coffeegrind123/prinny-client` (this repo)
 - Frontend (submodule): `coffeegrind123/cinny` branch `desktop-notifications`
 
 ## Fresh clone & build
 
 ```bash
-git clone --recursive https://github.com/coffeegrind123/cinny-desktop.git
-cd cinny-desktop
+git clone --recursive https://github.com/coffeegrind123/prinny-client.git
+cd prinny-client
 
 # Ensure submodule is on our branch
 cd cinny
