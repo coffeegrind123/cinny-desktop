@@ -74,13 +74,11 @@ function replaceInFile(filePath) {
     content = content.replace(/"cinny-v\$/g, '"prinny-v$');
 
     // Tauri config JSON values
+    // NOTE: mainBinaryName stays "cinny" — Tauri reads it before
+    // the script runs and will fail to find a renamed binary.
+    // Cargo package name also stays "cinny" for the same reason.
     content = content.replace(/"productName"\s*:\s*"Cinny"/g, '"productName": "Prinny"');
-    content = content.replace(/"mainBinaryName"\s*:\s*"cinny"/g, '"mainBinaryName": "prinny"');
     content = content.replace(/"identifier"\s*:\s*"in\.cinny\.app"/g, '"identifier": "in.prinny.app"');
-
-    // Cargo.toml
-    content = content.replace(/^name = "cinny"/gm, 'name = "prinny"');
-    content = content.replace(/^default-run = "cinny"/gm, 'default-run = "prinny"');
 
     // General replacements — title case and all caps only.
     // Lowercase "cinny" is NOT blanket-replaced because it appears in

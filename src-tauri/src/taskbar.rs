@@ -58,13 +58,16 @@ mod win {
             None => return,
         };
 
-        let hicon = icon_data.and_then(|data| load_icon_from_bytes(data));
+        let hicon = icon_data
+            .and_then(|data| load_icon_from_bytes(data))
+            .unwrap_or(HICON::default());
 
+        let desc = PCWSTR::null();
         unsafe {
             let _ = taskbar.SetOverlayIcon(
                 HWND(hwnd as *mut _),
                 hicon,
-                None,
+                &desc,
             );
         }
     }
