@@ -39,6 +39,23 @@ async function createTauriRelease() {
   const promises = latestAssets.map(async (asset) => {
     const { name, browser_download_url } = asset;
 
+    // Windows: .msi (non-updater) or .exe installer
+    if (/\.msi$/.test(name) && !/\.msi\.zip/.test(name)) {
+      windowsX86_64.url = browser_download_url;
+    }
+
+    // Linux: .AppImage (non-updater)
+    if (/\.AppImage$/.test(name) && !/\.AppImage\.tar\.gz/.test(name)) {
+      linuxX86_64.url = browser_download_url;
+    }
+
+    // macOS: .dmg
+    if (/universal\.dmg$/.test(name)) {
+      darwinX86_64.url = browser_download_url;
+      darwinAarch64.url = browser_download_url;
+    }
+
+    // Updater artifacts (signed — only if TAURI_SIGNING_PRIVATE_KEY is set)
     if (/\.msi\.zip$/.test(name)) {
       windowsX86_64.url = browser_download_url;
     }
@@ -55,15 +72,10 @@ async function createTauriRelease() {
 
     if (/universal\.app\.tar\.gz$/.test(name)) {
       darwinX86_64.url = browser_download_url;
-    }
-    if (/universal\.app\.tar\.gz\.sig$/.test(name)) {
-      darwinX86_64.signature = await getAssetSign(browser_download_url);
-    }
-
-    if (/universal\.app\.tar\.gz$/.test(name)) {
       darwinAarch64.url = browser_download_url;
     }
     if (/universal\.app\.tar\.gz\.sig$/.test(name)) {
+      darwinX86_64.signature = await getAssetSign(browser_download_url);
       darwinAarch64.signature = await getAssetSign(browser_download_url);
     }
   });
@@ -78,19 +90,38 @@ async function createTauriRelease() {
   };
 
   if (windowsX86_64.url) releaseData.platforms["windows-x86_64"] = windowsX86_64;
-  else console.error('Failed to get release for windowsX86_64');
+  else console.log('No windows-x86_64 updater artifact (signing key not configured)');
 
   if (linuxX86_64.url) releaseData.platforms["linux-x86_64"] = linuxX86_64;
-  else console.error('Failed to get release for linuxX86_64');
+  else console.log('No linux-x86_64 updater artifact (signing key not configured)');
 
   if (darwinX86_64.url) releaseData.platforms["darwin-x86_64"] = darwinX86_64;
-  else console.error('Failed to get release for darwinX86_64');
+  else console.log('No darwin-x86_64 updater artifact (signing key not configured)');
 
   if (darwinAarch64.url) releaseData.platforms["darwin-aarch64"] = darwinAarch64;
-  else console.error('Failed to get release for darwinAarch64');
+  else console.log('No darwin-aarch64 updater artifact (signing key not configured)');
 
-  const releaseResult = await repos.getReleaseByTag({ ...repoMetaData, tag: 'tauri' });
-  const tauriRelease = releaseResult.data;
+  // Get or create the "tauri" release used as updater metadata storage
+  let tauriRelease;
+  try {
+    const result = await repos.getReleaseByTag({ ...repoMetaData, tag: 'tauri' });
+    tauriRelease = result.data;
+  } catch (err) {
+    if (err.status === 404) {
+      console.log('Creating tauri release for updater metadata...');
+      tauriRelease = await repos.createRelease({
+        ...repoMetaData,
+        tag_name: 'tauri',
+        name: 'Updater Metadata',
+        body: 'Auto-generated release for Tauri updater metadata. Do not delete.',
+        draft: false,
+        prerelease: false,
+      });
+      tauriRelease = tauriRelease.data;
+    } else {
+      throw err;
+    }
+  }
 
   const prevReleaseAsset = tauriRelease.assets.find((asset) => asset.name === 'release.json');
   if (prevReleaseAsset) {
