@@ -20,7 +20,7 @@ class UpdateChecker(private val context: Context) {
     companion object {
         private const val TAG = "UpdateChecker"
         private const val RELEASE_JSON_URL =
-            "https://github.com/coffeegrind123/cinny-desktop/releases/download/tauri/release.json"
+            "https://github.com/coffeegrind123/prinny-client/releases/download/tauri/release.json"
     }
 
     fun check() {

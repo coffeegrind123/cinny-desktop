@@ -54,12 +54,6 @@ function replaceInFile(filePath) {
 
     // Specific patterns (order matters — most specific first)
 
-    // Repo URLs: cinny-desktop → prinny-client
-    content = content.replace(
-      /coffeegrind123\/cinny-desktop/g,
-      'coffeegrind123/prinny-client'
-    );
-
     // Android package name
     content = content.replace(/in\.cinny\.app/g, 'in.prinny.app');
 
