@@ -10,6 +10,8 @@
   ],
   "permissions": [
     "updater:default",
+    "updater:allow-check",
+    "updater:allow-download-and-install",
     "global-shortcut:default",
     "global-shortcut:allow-is-registered",
     "global-shortcut:allow-register",
