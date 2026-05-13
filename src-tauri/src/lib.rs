@@ -8,6 +8,24 @@
 use tauri::{webview::{NewWindowResponse, WebviewWindowBuilder}, WebviewUrl};
 use tauri_plugin_opener::OpenerExt;
 
+mod taskbar;
+
+// Embedded overlay icons for Windows taskbar badge (1-9, 9+)
+#[cfg(target_os = "windows")]
+const BADGE_ICONS: &[&[u8]] = &[
+    &[], // index 0 unused
+    include_bytes!("../icons/overlay/badge-1.ico"),
+    include_bytes!("../icons/overlay/badge-2.ico"),
+    include_bytes!("../icons/overlay/badge-3.ico"),
+    include_bytes!("../icons/overlay/badge-4.ico"),
+    include_bytes!("../icons/overlay/badge-5.ico"),
+    include_bytes!("../icons/overlay/badge-6.ico"),
+    include_bytes!("../icons/overlay/badge-7.ico"),
+    include_bytes!("../icons/overlay/badge-8.ico"),
+    include_bytes!("../icons/overlay/badge-9.ico"),
+    include_bytes!("../icons/overlay/badge-9plus.ico"),
+];
+
 fn unifiedpush_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
     tauri::plugin::Builder::new("unifiedpush")
         .setup(|_app, api| {
@@ -38,10 +56,28 @@ fn foreground_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 
 #[tauri::command]
 fn set_badge_count(window: tauri::Window, count: u32) {
-    if count > 0 {
-        let _ = window.set_badge_count(Some(count.into()));
-    } else {
-        let _ = window.set_badge_count(None::<i64>);
+    #[cfg(target_os = "windows")]
+    {
+        let idx = if count == 0 {
+            None
+        } else if count >= 10 {
+            Some(10usize) // badge-9plus
+        } else {
+            Some(count as usize)
+        };
+        if let Ok(hwnd) = window.hwnd() {
+            taskbar::set_overlay(hwnd, idx.map(|i| BADGE_ICONS[i]));
+        }
+        return;
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        if count > 0 {
+            let _ = window.set_badge_count(Some(count.into()));
+        } else {
+            let _ = window.set_badge_count(None::<i64>);
+        }
     }
 }
 
