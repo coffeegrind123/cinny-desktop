@@ -6,6 +6,36 @@ Cinny Matrix client packaged as a desktop app via Tauri v2. Cross-compiles to Wi
 - Desktop shell: `coffeegrind123/prinny-client` (this repo)
 - Frontend (submodule): `coffeegrind123/cinny` branch `desktop-notifications`
 
+## Cutting a release
+
+CI runs on every push to `main` but only uploads build artifacts. To publish a release:
+
+1. Make sure the latest CI run on `main` is green (all 4 platforms passing).
+2. Tag and push:
+   ```bash
+   git tag v4.11.X && git push origin v4.11.X
+   ```
+3. Create the release (triggers the full pipeline including release asset uploads and `release.json`):
+   ```bash
+   gh release create v4.11.X \
+     --title "Prinny Client v4.11.X" \
+     --notes "Release notes here"
+   ```
+4. The `release: published` trigger fires the full `Build` workflow:
+   - All 4 platforms build and upload assets to the release
+   - `archive` job uploads a source zip
+   - `release-update` runs `scripts/release.mjs` to generate `release.json` on the `tauri` tag — this powers the in-app updater
+
+After the release CI completes, the `release.json` on the `tauri` tag will include the new version's platform entries, and desktop/Android clients will auto-detect the update.
+
+**If the release CI fails**, check the failed job logs, fix the issue, delete the tag/release, and re-tag:
+```bash
+gh release delete v4.11.X --yes
+git push origin --delete v4.11.X
+git tag -d v4.11.X
+# fix, commit, push, then re-tag
+```
+
 ## Fresh clone & build
 
 ```bash
@@ -27,8 +57,8 @@ npm run tauri build -- --target x86_64-pc-windows-gnu
 
 Output lands in `src-tauri/target/x86_64-pc-windows-gnu/release/`:
 - `cinny.exe` — the application binary (34MB)
-- `bundle/nsis/Cinny_x.y.z_x64-setup.exe` — NSIS installer (18MB)
-- `bundle/nsis/Cinny_x.y.z_x64-setup.nsis.zip` — updater archive
+- `bundle/nsis/Prinny_x.y.z_x64-setup.exe` — NSIS installer (18MB)
+- `bundle/nsis/Prinny_x.y.z_x64-setup.nsis.zip` — updater archive
 
 ## Submodule setup
 

@@ -14,10 +14,10 @@ Everything is on [GitHub Releases](https://github.com/coffeegrind123/prinny-clie
 
 | Platform | Download |
 |----------|----------|
-| Windows | [MSI](https://github.com/coffeegrind123/prinny-client/releases/latest/download/Cinny_desktop-x86_64.msi) · [NSIS setup](https://github.com/coffeegrind123/prinny-client/releases/latest/download/Cinny_desktop-x86_64-setup.exe) |
-| macOS | [DMG](https://github.com/coffeegrind123/prinny-client/releases/latest/download/Cinny_desktop-universal.dmg) |
-| Linux | [AppImage](https://github.com/coffeegrind123/prinny-client/releases/latest/download/Cinny_desktop-x86_64.AppImage) · [deb](https://github.com/coffeegrind123/prinny-client/releases/latest/download/Cinny_desktop-x86_64.deb) |
-| Android | [APK](https://github.com/coffeegrind123/prinny-client/releases/latest/download/cinny-android-universal.apk) (sideload) |
+| Windows | [MSI](https://github.com/coffeegrind123/prinny-client/releases/latest/download/Prinny_desktop-x86_64.msi) · [NSIS setup](https://github.com/coffeegrind123/prinny-client/releases/latest/download/Prinny_desktop-x86_64-setup.exe) |
+| macOS | [DMG](https://github.com/coffeegrind123/prinny-client/releases/latest/download/Prinny_desktop-universal.dmg) |
+| Linux | [AppImage](https://github.com/coffeegrind123/prinny-client/releases/latest/download/Prinny_desktop-x86_64.AppImage) · [deb](https://github.com/coffeegrind123/prinny-client/releases/latest/download/Prinny_desktop-x86_64.deb) |
+| Android | [APK](https://github.com/coffeegrind123/prinny-client/releases/latest/download/prinny-android-universal.apk) (sideload) |
 
 Desktop builds update themselves. Android checks on launch and downloads new APKs when available.
 
@@ -30,6 +30,16 @@ The macOS Dock and Linux taskbar show an unread count badge. Red circle, number 
 On mobile, swipe from the right edge to open a room, swipe from the left edge to go back. Same gesture Discord uses. Works on the Home, Direct, and Space screens.
 
 DM avatars and the member list show online/busy/away dots. When someone replies to your message, the replied-to message gets a yellow left border. The "New Messages" divider looks like Discord's (green line, "NEW" badge on the right). Timestamps sit next to usernames instead of floating on the far right.
+
+Press `Ctrl+/` to see every keyboard shortcut. All 49 keybinds are configurable in Settings → Keybinds — click any binding and press your new combo. The editor toolbar tooltips update to show whatever you've set.
+
+Type `:` then a few characters and press Enter to auto-complete the first emoji match. Same for slash commands, user mentions, and room mentions. No arrow-key dance needed. The first result is highlighted so you can see what Enter will pick.
+
+Right-click a message and choose "Mark Unread" — the room gets its unread badge back and the green "NEW" line appears at that message next time you open it. Same as Discord's mark-unread.
+
+The "..." menu next to Direct Messages has a "Show unread only" toggle to collapse your DM list to conversations that need attention.
+
+Read receipts have two modes (Settings → General → Read Receipt Style): the default Cinny way shows who's following the conversation live, or switch to Element-style tiny avatar dots at each person's last-read position — visible even when they're not actively viewing.
 
 The Android build keeps a foreground service running so the Matrix WebSocket stays connected. This matters on GrapheneOS and other devices without FCM. The persistent notification says "Connected to Matrix" and sits at low priority so it's not annoying. UnifiedPush support means you get pings even when the app is fully killed, assuming you have a distributor installed.
 
