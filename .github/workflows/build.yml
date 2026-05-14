@@ -252,9 +252,28 @@ jobs:
             prinny-android-universal.apk
             prinny-android-universal.apk.sha256
 
+  # ── Cleanup old releases ─────────────────────────────────────────
+  cleanup-old-releases:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete old versioned releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CURRENT_TAG="${{ github.ref_name }}"
+          echo "Current release: $CURRENT_TAG"
+          gh api "repos/${{ github.repository }}/releases" --jq '.[] | select(.tag_name | startswith("v")) | select(.tag_name != $ENV.CURRENT_TAG) | .id' | while read id; do
+            echo "Deleting old release $id"
+            gh api -X DELETE "repos/${{ github.repository }}/releases/$id" --silent
+          done
+
   # ── Source archive ──────────────────────────────────────────────
   archive:
     if: github.event_name == 'release'
+    needs: [cleanup-old-releases]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -275,7 +294,7 @@ jobs:
   # ── Release update metadata ─────────────────────────────────────
   release-update:
     if: github.event_name == 'release'
-    needs: [windows-x86_64, linux-x86_64, macos-universal, android]
+    needs: [windows-x86_64, linux-x86_64, macos-universal, android, cleanup-old-releases]
     runs-on: ubuntu-latest
     permissions:
       contents: write
