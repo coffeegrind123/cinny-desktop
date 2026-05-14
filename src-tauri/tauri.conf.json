@@ -47,7 +47,7 @@
   },
   "productName": "Prinny",
   "mainBinaryName": "prinny",
-  "version": "4.11.10",
+  "version": "4.11.11",
   "identifier": "in.prinny.app",
   "plugins": {
     "updater": {
