@@ -110,6 +110,9 @@ jobs:
       - name: Install tauri dependencies
         run: npm ci
 
+      - name: Bump version
+        run: node scripts/bump-version.mjs
+
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@73fb865345c54760d875b94642314f8c0c894afa # v0.6.1
         env:
@@ -176,6 +179,9 @@ jobs:
       - name: Install tauri dependencies
         run: npm ci
 
+      - name: Bump version
+        run: node scripts/bump-version.mjs
+
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@73fb865345c54760d875b94642314f8c0c894afa # v0.6.1
         env:
@@ -236,6 +242,9 @@ jobs:
         run: cd cinny && npm ci
       - name: Install tauri dependencies
         run: npm ci
+
+      - name: Bump version
+        run: node scripts/bump-version.mjs
 
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@73fb865345c54760d875b94642314f8c0c894afa # v0.6.1
@@ -305,6 +314,9 @@ jobs:
         run: cd cinny && npm ci
       - name: Install tauri dependencies
         run: npm ci
+
+      - name: Bump version
+        run: node scripts/bump-version.mjs
 
       - name: Build Android APK
         run: |

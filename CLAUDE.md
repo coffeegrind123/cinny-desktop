@@ -8,33 +8,18 @@ Cinny Matrix client packaged as a desktop app via Tauri v2. Cross-compiles to Wi
 
 ## Cutting a release
 
-CI runs on every push to `main` but only uploads build artifacts. To publish a release:
+**Every push to `main` is automatically a release.** No manual tagging needed.
 
-1. Make sure the latest CI run on `main` is green (all 4 platforms passing).
-2. Tag and push:
-   ```bash
-   git tag v4.11.X && git push origin v4.11.X
-   ```
-3. Create the release (triggers the full pipeline including release asset uploads and `release.json`):
-   ```bash
-   gh release create v4.11.X \
-     --title "Prinny Client v4.11.X" \
-     --notes "Release notes here"
-   ```
-4. The `release: published` trigger fires the full `Build` workflow:
-   - All 4 platforms build and upload assets to the release
-   - `archive` job uploads a source zip
-   - `release-update` runs `scripts/release.mjs` to generate `release.json` on the `tauri` tag — this powers the in-app updater
+The `create-release` job in `build.yml` auto-bumps the patch version from the latest `v*` tag, creates the tag + GitHub release atomically via `gh release create --target`, and the full pipeline runs:
+
+1. `create-release` — auto-computes next version (e.g. `v4.11.11` → `v4.11.12`), generates release notes from `git log`, deletes old versioned releases, creates new release with tag
+2. All 4 platform builds run in parallel, upload to the release
+3. `archive` uploads a source zip
+4. `release-update` runs `scripts/release.mjs` to generate `release.json` on the `tauri` tag — this powers the in-app updater
 
 After the release CI completes, the `release.json` on the `tauri` tag will include the new version's platform entries, and desktop/Android clients will auto-detect the update.
 
-**If the release CI fails**, check the failed job logs, fix the issue, delete the tag/release, and re-tag:
-```bash
-gh release delete v4.11.X --yes
-git push origin --delete v4.11.X
-git tag -d v4.11.X
-# fix, commit, push, then re-tag
-```
+**If the release CI fails**, fix the issue, commit, and push to main again — it'll auto-bump to the next version.
 
 ## Fresh clone & build
 
