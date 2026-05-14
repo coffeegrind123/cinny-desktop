@@ -30,6 +30,7 @@ const SKIP_DIRS = new Set([
 
 const SKIP_FILES = new Set([
   'accountData.ts', // Matrix protocol constant
+  'About.tsx',      // Credits must credit upstream Cinny, not Prinny
 ]);
 
 // ── Phase 0: rename Android package directory ──────────────────────
