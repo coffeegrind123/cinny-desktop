@@ -1,0 +1,72 @@
+/**
+ * Stamp the current git version tag across all config files.
+ * Run before build — reads git describe to get the version,
+ * then writes it to tauri.conf.json, Cargo.toml, package.json,
+ * and cinny/package.json.
+ *
+ * If not in a git repo or no tag, falls back to reading from
+ * src-tauri/tauri.conf.json (the manual version).
+ */
+import { readFileSync, writeFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+function getVersion() {
+  try {
+    const tag = execSync('git describe --tags --abbrev=0', {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    if (tag.startsWith('v')) return tag.slice(1);
+    return tag;
+  } catch {
+    const conf = JSON.parse(readFileSync(join(ROOT, 'src-tauri', 'tauri.conf.json'), 'utf8'));
+    return conf.version;
+  }
+}
+
+function replaceInFile(path, pattern, replacement) {
+  let content = readFileSync(path, 'utf8');
+  const updated = content.replace(pattern, replacement);
+  if (updated !== content) {
+    writeFileSync(path, updated, 'utf8');
+    console.log(`  ${path} -> ${replacement.match(/[\d.]+/)[0]}`);
+  }
+}
+
+const version = getVersion();
+console.log(`[bump-version] Stamping version ${version}...`);
+
+// tauri.conf.json
+replaceInFile(
+  join(ROOT, 'src-tauri', 'tauri.conf.json'),
+  /"version"\s*:\s*"[^"]+"/,
+  `"version": "${version}"`
+);
+
+// Cargo.toml
+replaceInFile(
+  join(ROOT, 'src-tauri', 'Cargo.toml'),
+  /^version\s*=\s*"[^"]+"/m,
+  `version = "${version}"`
+);
+
+// Root package.json
+replaceInFile(
+  join(ROOT, 'package.json'),
+  /"version"\s*:\s*"[^"]+"/,
+  `"version": "${version}"`
+);
+
+// cinny/package.json
+replaceInFile(
+  join(ROOT, 'cinny', 'package.json'),
+  /"version"\s*:\s*"[^"]+"/,
+  `"version": "${version}"`
+);
+
+console.log(`[bump-version] Done.`);

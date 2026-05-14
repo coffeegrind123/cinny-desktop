@@ -40,14 +40,14 @@
     "createUpdaterArtifacts": "v1Compatible"
   },
   "build": {
-    "beforeBuildCommand": "node scripts/rename-prinny.mjs && cd cinny && npm run build",
+    "beforeBuildCommand": "node scripts/bump-version.mjs && node scripts/rename-prinny.mjs && cd cinny && npm run build",
     "frontendDist": "../cinny/dist",
     "beforeDevCommand": "cd cinny && npm start",
     "devUrl": "http://localhost:8080"
   },
   "productName": "Prinny",
   "mainBinaryName": "prinny",
-  "version": "4.11.6",
+  "version": "4.11.10",
   "identifier": "in.prinny.app",
   "plugins": {
     "updater": {
