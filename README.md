@@ -21,6 +21,8 @@ Desktop builds update themselves via `release.json`. Android checks on launch an
 
 ## Features
 
+Everything below is what this fork adds on top of upstream [Cinny](https://cinny.in). Cinny itself already has a markdown editor, message layouts, slash commands, themes, quick switcher, and standard Matrix client features. These are the additions.
+
 ### Desktop notifications
 
 | Feature | Description |
@@ -36,15 +38,9 @@ Desktop builds update themselves via `release.json`. Android checks on launch an
 
 | Feature | Description |
 |---------|-------------|
-| Markdown editor | Slate-based rich text with inline formatting toggles |
-| Editor toolbar | Bold, italic, underline, strikethrough, inline code, spoiler, block quote, code block, ordered/unordered lists, headings 1-3 |
-| Keyboard shortcuts | `Ctrl+B` bold, `Ctrl+I` italic, `Ctrl+U` underline, `Ctrl+S` strikethrough, `Ctrl+[` inline code, `Ctrl+H` spoiler, `Ctrl+7` ordered list, `Ctrl+8` unordered list, `Ctrl+'` block quote, `Ctrl+;` code block, `Ctrl+1/2/3` headings |
-| Autocomplete | `:emoji:` with Enter/Tab to complete first match. `/command`, `@user`, `#room` all auto-complete on Enter |
-| First result highlighted | Focus ring on first autocomplete result so you can see what Enter will pick |
-| `Ctrl+/` shortcut panel | Discord-style modal showing all 49 keybinds grouped by category with current keycap badges |
-| Configurable keybinds | Settings → Keybinds: click any binding, press new combo to rebind. Reset per-binding or Reset All. Editor hotkeys and tooltips reflect current bindings |
-| Send on Enter | `enterForNewline` setting: Enter sends (default) or adds newline |
-| Slash commands | `/join`, `/leave`, `/kick`, `/ban`, `/invite`, `/me`, `/nick`, `/topic`, `/shrug`, `/tableflip` with autocomplete |
+| `Ctrl+/` shortcut panel | Discord-style modal showing all 49 keybinds grouped by category with keycap badges showing current bindings |
+| Configurable keybinds | Settings → Keybinds: click any binding, press new combo to rebind. Reset per-binding or Reset All. Editor hotkeys and toolbar tooltips reflect configured bindings |
+| Enter autocomplete | `:emoji:`, `/command`, `@user`, `#room` all complete first match on Enter (no arrow-key needed). First result auto-focused with visible highlight |
 
 ### Message timeline
 
@@ -53,27 +49,16 @@ Desktop builds update themselves via `release.json`. Android checks on launch an
 | Reply highlights | Yellow left border + amber background when someone replies to your message |
 | Timestamp position | Discord-style: timestamp next to username, `@user:server` on right only on hover (Modern layout) |
 | NEW badge | Right-aligned green "NEW" badge with full-width green line divider (Discord-style) |
-| Message layouts | Modern (default), Compact, Bubble |
-| Message spacing | Configurable 0-500px gaps between messages |
 | Read receipts | Two modes (Settings → General → Read Receipt Style): Cinny default shows "is following the conversation" text live, Element-style shows tiny avatar dots at each person's last-read position |
 | Mark as Unread | Right-click any message → sets read marker to previous event. Room gets unread badge, green NEW line at marked position |
-| Message context menu | Right-click: Add Reaction, View Reactions, Reply, Reply in Thread, Edit, Read Receipts, Copy Link, Pin, Mark Unread, Delete, Report |
-| Hide read receipts | `hideActivity` setting disables typing indicators and read receipts |
-| Hide membership events | `hideMembershipEvents` setting hides join/leave clutter |
-| Hide nick/avatar events | `hideNickAvatarEvents` setting |
-| Media auto-load | `mediaAutoLoad` setting |
-| URL preview | `urlPreview` + `encUrlPreview` settings |
 
 ### Sidebar and navigation
 
 | Feature | Description |
 |---------|-------------|
-| Presence indicators | Online/busy/away dots on DM avatars and member list (`useUserPresence` hook) |
+| Presence indicators | Online/busy/away dots on DM avatars and member list |
 | DM unread filter | "..." menu next to Direct Messages → "Show unread only" collapses list to rooms with unread messages |
 | Mobile swipe gestures | Right-edge swipe opens room, left-edge swipe goes back (Discord-style). Works on Home, Direct, and Space screens |
-| Quick switcher | `Ctrl+K` search (rooms, DMs, spaces) with fuzzy matching |
-| Server/channel navigation | `Alt+Up/Down` channels, `Ctrl+Alt+Up/Down` servers, `Alt+Shift+Up/Down` unread channels |
-| Space tabs | Sidebar tabs for Home, Direct Messages, and Spaces |
 
 ### Desktop shell
 
@@ -84,59 +69,40 @@ Desktop builds update themselves via `release.json`. Android checks on launch an
 | Windows taskbar overlays | `ITaskbarList3::SetOverlayIcon` with numbered 1-9 and 9+ ICO overlays |
 | Desktop updater | `tauri-plugin-updater` checks `release.json` on GitHub Releases |
 | Window state | `tauri-plugin-window-state` remembers size, position, maximized state |
-| Global shortcuts | `global-shortcut` plugin registered (available for future use) |
-| Cross-platform | Single Rust codebase, conditional compilation for Windows/macOS/Linux/Android |
 
 ### Mobile (Android)
 
 | Feature | Description |
 |---------|-------------|
 | Foreground service | Persistent "Connected to Matrix" notification keeps WebSocket alive on GrapheneOS and de-Googled devices |
-| Importance LOW | Notification sits at low priority, no sound, non-dismissible |
 | Network detection | `ConnectivityManager.NetworkCallback` detects WiFi/mobile switch, reconnects automatically |
 | Watchdog | `AlarmManager` 15-min wake during doze |
-| UnifiedPush | `android-connector:3.0.10` via JitPack. No Firebase, no Play Services needed |
+| UnifiedPush | `android-connector:3.0.10` via JitPack — no Firebase, no Play Services needed |
 | Push notifications | `UnifiedPushReceiver` posts system notification when app is killed, forwards to plugin when alive |
 | Android updater | `UpdateChecker.kt` fetches `release.json`, downloads APK via `DownloadManager`, opens for install |
 | Safe-area padding | Notch/status bar padding on mobile (`env(safe-area-inset-*)`) |
 | Cleartext traffic | `usesCleartextTraffic=true` for Matrix auth HTTP redirects (homeserver discovery, OIDC) |
 | Universal APK | All 4 ABIs (arm64-v8a, armeabi-v7a, x86, x86_64) in one APK |
 
-### Theming and appearance
-
-| Feature | Description |
-|---------|-------------|
-| System theme | Auto light/dark based on OS preference |
-| Custom themes | Light and dark theme selectors, multiple built-in themes |
-| Monochrome mode | Single-color theme variant |
-| Page zoom | Configurable 50-200% zoom |
-| Twitter emoji | Twemoji option for consistent cross-platform emoji |
-| Markdown toggle | Disable markdown rendering for plain text |
-| 24-hour clock | `hour24Clock` setting |
-| Custom date format | `D MMM YYYY`, `DD/MM/YYYY`, `MM/DD/YYYY`, `YYYY/MM/DD` |
-
 ### Branding
 
 | Feature | Description |
 |---------|-------------|
-| Prinny branding | All desktop icons, favicons, and app metadata replaced with Prinny panic face |
-| Build-time rename | `scripts/rename-prinny.mjs` runs via `beforeBuildCommand`: Cinny→Prinny across all source (Rust, Kotlin, TSX, JSON, XML) |
-| Android package | `in.prinny.app` — directory structure, namespace, applicationId, Kotlin packages all consistent |
-| About page | Settings → About: 96px Prinny logo, version from `package.json`, links to our repos |
+| Prinny panic face | All 17 desktop icons (ICO, PNG, ICNS), favicon SVGs replaced |
+| Build-time rename | `scripts/rename-prinny.mjs` via `beforeBuildCommand`: Cinny→Prinny across all source (Rust, Kotlin, TSX, JSON, XML, HTML, SVG) |
+| Android package | `in.prinny.app` — directory, namespace, applicationId, Kotlin packages all consistent |
+| About page | 96px Prinny logo, dynamic version from `package.json`, links to our repos |
 | Release assets | All CI artifacts named `Prinny_desktop-*` / `prinny-android-*` |
 
 ### Build and CI
 
 | Feature | Description |
 |---------|-------------|
-| Unified CI | Single `build.yml` triggers on push (build + upload artifacts) and `release: published` (upload to release + `release.json` generation) |
+| Unified CI | Single `build.yml` triggers on push (build + artifacts) and `release: published` (upload to release + `release.json`) |
 | 4 platforms | Windows (x86_64 MSI + NSIS), macOS (universal DMG), Linux (x86_64 AppImage + deb), Android (universal APK) |
 | Cross-compile | Windows builds from Linux via `x86_64-pc-windows-gnu` + mingw-w64 + NSIS |
-| Android CI | SDK 36, NDK 27.0.12077973, `CARGO_BUILD_JOBS=1` prevents OOM |
-| Serial Rust builds | `mustRunAfter` chain in `RustPlugin.kt` prevents parallel linkers from exhausting RAM |
+| Serial Rust builds | `mustRunAfter` chain in `RustPlugin.kt` prevents parallel Android linkers from OOMing |
 | Release metadata | `scripts/release.mjs` generates `release.json` on `tauri` tag for desktop + Android updater |
-| Source archive | Release CI creates `prinny-client-vX.Y.Z.zip` |
-| APK signed | Debug keystore generated per CI run, `apksigner` signs universal APK |
 
 ## Build
 
