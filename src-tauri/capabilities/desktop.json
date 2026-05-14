@@ -10,6 +10,7 @@
     "main"
   ],
   "permissions": [
+    "cors-fetch:default",
     "notification:default",
     "updater:default",
     "updater:allow-check",
