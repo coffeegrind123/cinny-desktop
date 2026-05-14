@@ -129,8 +129,12 @@ pub fn run() {
                 window_builder = window_builder.title("Cinny");
             }
 
+            #[cfg(not(mobile))]
+            {
+                window_builder = window_builder.inner_size(800.0, 700.0);
+            }
+
             window_builder
-                .inner_size(800.0, 700.0)
                 .on_new_window(move |url, _features| {
                     let _ = app_handle.opener().open_url(url.as_str(), None::<&str>);
                     NewWindowResponse::Deny
