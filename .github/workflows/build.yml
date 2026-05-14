@@ -5,25 +5,43 @@ on:
     branches: [main]
     tags:
       - 'v*'
-  release:
-    types: [published]
 
 jobs:
-  # ── Auto-create release from tag ──────────────────────────────────
+  # ── Auto-create release (main push auto-versions, tag push uses tag) ──
   create-release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      created: ${{ steps.create.outputs.created }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
+      - name: Compute version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "Auto-detected tag: ${{ github.ref_name }}"
+          else
+            LATEST=$(git tag --sort=-v:refname | grep '^v' | head -1)
+            if [ -z "$LATEST" ]; then
+              TAG="v4.11.1"
+            else
+              TAG=$(echo "$LATEST" | awk -F. '{print $1"."$2"."$NF+1}')
+            fi
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+            echo "Auto-bumped version: $LATEST -> $TAG"
+          fi
+
       - name: Generate release notes
         id: notes
         run: |
-          TAG="${{ github.ref_name }}"
+          TAG="${{ steps.version.outputs.tag }}"
           PREV_TAG=$(git tag --sort=-v:refname | grep '^v' | head -2 | tail -1)
           if [ -z "$PREV_TAG" ]; then
             echo "notes<<EOF" >> $GITHUB_OUTPUT
@@ -39,24 +57,40 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          CURRENT_TAG="${{ github.ref_name }}"
+          CURRENT_TAG="${{ steps.version.outputs.tag }}"
           gh api "repos/${{ github.repository }}/releases" --jq '.[] | select(.tag_name | startswith("v")) | select(.tag_name != $ENV.CURRENT_TAG) | .id' | while read id; do
             echo "Deleting old release $id"
             gh api -X DELETE "repos/${{ github.repository }}/releases/$id" --silent
           done
 
       - name: Create release
+        id: create
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "Prinny Client ${{ github.ref_name }}" \
-            --notes "${{ steps.notes.outputs.notes }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          if gh release view "$TAG" &>/dev/null; then
+            echo "Release $TAG already exists — created by concurrent main-push run"
+            echo "created=false" >> $GITHUB_OUTPUT
+          else
+            if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+              gh release create "$TAG" \
+                --target "${{ github.sha }}" \
+                --title "Prinny Client $TAG" \
+                --notes "${{ steps.notes.outputs.notes }}"
+            else
+              gh release create "$TAG" \
+                --title "Prinny Client $TAG" \
+                --notes "${{ steps.notes.outputs.notes }}"
+            fi
+            echo "created=true" >> $GITHUB_OUTPUT
+            echo "Published $TAG"
+          fi
 
   # ── Windows x86_64 ──────────────────────────────────────────────
   windows-x86_64:
     needs: [create-release]
-    if: success() || (needs.create-release.result == 'skipped')
+    if: needs.create-release.outputs.created == 'true'
     runs-on: windows-latest
     permissions:
       contents: write
@@ -106,11 +140,11 @@ jobs:
           if-no-files-found: error
 
       - name: Upload to release
-        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tag_name: ${{ needs.create-release.outputs.tag }}
           files: |
             src-tauri/target/release/bundle/msi/Prinny_desktop-x86_64.msi
             src-tauri/target/release/bundle/nsis/Prinny_desktop-x86_64-setup.exe
@@ -118,7 +152,7 @@ jobs:
   # ── Linux x86_64 ────────────────────────────────────────────────
   linux-x86_64:
     needs: [create-release]
-    if: success() || (needs.create-release.result == 'skipped')
+    if: needs.create-release.outputs.created == 'true'
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -169,11 +203,11 @@ jobs:
           if-no-files-found: error
 
       - name: Upload to release
-        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tag_name: ${{ needs.create-release.outputs.tag }}
           files: |
             src-tauri/target/release/bundle/deb/Prinny_desktop-x86_64.deb
             src-tauri/target/release/bundle/appimage/Prinny_desktop-x86_64.AppImage
@@ -181,7 +215,7 @@ jobs:
   # ── macOS universal ─────────────────────────────────────────────
   macos-universal:
     needs: [create-release]
-    if: success() || (needs.create-release.result == 'skipped')
+    if: needs.create-release.outputs.created == 'true'
     runs-on: macos-latest
     permissions:
       contents: write
@@ -230,11 +264,11 @@ jobs:
           if-no-files-found: error
 
       - name: Upload to release
-        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tag_name: ${{ needs.create-release.outputs.tag }}
           files: |
             src-tauri/target/universal-apple-darwin/release/bundle/dmg/Prinny_desktop-universal.dmg
             src-tauri/target/universal-apple-darwin/release/bundle/macos/Prinny_desktop-universal.app.tar.gz
@@ -242,7 +276,7 @@ jobs:
   # ── Android universal APK ───────────────────────────────────────
   android:
     needs: [create-release]
-    if: success() || (needs.create-release.result == 'skipped')
+    if: needs.create-release.outputs.created == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -301,19 +335,19 @@ jobs:
           if-no-files-found: error
 
       - name: Upload to release
-        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tag_name: ${{ needs.create-release.outputs.tag }}
           files: |
             prinny-android-universal.apk
             prinny-android-universal.apk.sha256
 
   # ── Source archive ──────────────────────────────────────────────
   archive:
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
     needs: [create-release]
+    if: needs.create-release.outputs.created == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -325,17 +359,18 @@ jobs:
       - name: Create source zip
         run: |
           cd ..
-          zip ${{ github.event.repository.name }}/${{ github.event.repository.name }}-${{ github.ref_name }}.zip ${{ github.event.repository.name }} -r
+          zip ${{ github.event.repository.name }}/${{ github.event.repository.name }}-${{ needs.create-release.outputs.tag }}.zip ${{ github.event.repository.name }} -r
       - name: Upload to release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
+          tag_name: ${{ needs.create-release.outputs.tag }}
           files: |
-            ${{ github.event.repository.name }}-${{ github.ref_name }}.zip
+            ${{ github.event.repository.name }}-${{ needs.create-release.outputs.tag }}.zip
 
   # ── Release update metadata ─────────────────────────────────────
   release-update:
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
     needs: [windows-x86_64, linux-x86_64, macos-universal, android, create-release]
+    if: needs.create-release.outputs.created == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
