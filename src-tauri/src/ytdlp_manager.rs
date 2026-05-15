@@ -80,7 +80,8 @@ pub fn get_platform_specific_path(resource_dir: &Path) -> PathBuf {
 pub fn get_bundled_ytdlp_dir() -> Result<PathBuf, String> {
     if let Ok(exe_path) = env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
-            let resource_paths = vec![
+            #[allow(unused_mut)]
+            let mut resource_paths = vec![
                 exe_dir.join("../Resources/resources"),
                 exe_dir.join("resources"),
                 exe_dir.join("../resources"),
