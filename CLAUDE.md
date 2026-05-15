@@ -405,3 +405,127 @@ Toast notifications require the app to have an AppUserModelID, which Windows ass
 | `cinny/src/app/pages/client/ClientNonUIFeatures.tsx` | Runtime notification dispatch |
 | `cinny/src/app/features/settings/notifications/SystemNotification.tsx` | Permission UI |
 | `cinny/src/app/hooks/usePermission.ts` | Permission state with Tauri remapping |
+
+## Common gotchas (lessons from broken CI builds)
+
+### Removing a Rust module (e.g. yt-dlp)
+
+When removing a Rust feature, you MUST hit ALL of these or CI breaks:
+
+| Thing to remove | Location | Missed? CI result |
+|---|---|---|
+| `mod` declarations | `lib.rs` top | Compile error: can't find module |
+| `generate_handler![]` entries | `lib.rs` builder chain | Compile error: unresolved import |
+| Plugin function | `lib.rs` | Compile error (if still called) |
+| `.plugin(...)` call | `lib.rs` builder chain | Compile error: function not found |
+| Cargo dependencies | `Cargo.toml` | Unused dep warning (not fatal, but sloppy) |
+| Kotlin plugin file | `src-tauri/gen/android/.../*.kt` | **Gradle discovers it anyway — build fails with Kotlin compilation errors** |
+| Frontend utilities | `cinny/src/` | Vite build fails if still imported |
+| Settings fields | `settings.ts` + `General.tsx` | Vite build fails if still imported |
+
+### Deleting Kotlin files from gen/android/ (CRITICAL)
+
+**Gradle auto-discovers ALL `.kt` files under `gen/android/app/src/main/java/`.** Even if nothing in Rust references the plugin anymore, Gradle compiles every Kotlin file it finds. If the file has bitrotted (unresolved references, type mismatches, stale API calls), the Android CI build fails.
+
+**The fix:** `git rm` the file. Just `rm`-ing from disk isn't enough — git still tracks it, and CI checks out the committed version. The deletion must be committed and pushed.
+
+```bash
+git rm src-tauri/gen/android/app/src/main/java/in/prinny/app/YtDlpPlugin.kt
+git commit -m "Remove YtDlpPlugin.kt (no longer referenced by lib.rs)"
+```
+
+### Submodule workflow (CRITICAL — two-step push)
+
+When you change files inside `cinny/src/`:
+
+```bash
+# Step 1: Commit and push in the submodule (to the desktop-notifications branch)
+cd /opt/openclaude-src/cinny-desktop/cinny
+git add -A
+git commit -m "Fix: describe your change"
+git push origin desktop-notifications
+
+# Step 2: From the MAIN REPO ROOT, update the submodule pointer
+cd /opt/openclaude-src/cinny-desktop    # ← MUST be at repo root
+git add cinny
+git commit -m "Update cinny submodule"
+unset GITHUB_TOKEN && git push
+```
+
+**If `git add cinny` says "pathspec did not match any files":** you're inside the submodule directory. `cd` to the main repo root first. The `cinny/` path only exists from the parent repo's perspective — inside the submodule it's just `.`.
+
+### folds Text component renders as `<p>` (block element)
+
+`Text` from folds defaults to `as="p"`, which is `display: block`. Nesting a block element inside `inline-flex` containers (like keycap pills) causes garbled/layered text. Use a plain `<span>` with inline styles for inline keycap labels instead.
+
+```tsx
+// WRONG — Text renders as <p>, breaks inline-flex layout
+<Box style={{ display: 'inline-flex' }}>
+  <Text size="T200">{key}</Text>
+</Box>
+
+// RIGHT — plain span inherits inline-flex context
+<span style={{ display: 'inline-flex', fontSize: '12px' }}>
+  {key}
+</span>
+```
+
+### React fragments in flex layouts break vertical stacking
+
+`<>...</>` (React fragments) unwrap children directly into the parent DOM element. In a `display: flex; flex-direction: row` container (like CompactLayout), siblings become flex items side by side. This makes URL previews appear to the right of message text instead of below.
+
+```tsx
+// WRONG — fragment siblings become flex items in parent row
+<>
+  <MessageTextBody>...</MessageTextBody>
+  <UrlPreviewHolder>...</UrlPreviewHolder>
+</>
+
+// RIGHT — Box direction="Column" forces vertical stacking
+<Box direction="Column">
+  <MessageTextBody>...</MessageTextBody>
+  <UrlPreviewHolder>...</UrlPreviewHolder>
+</Box>
+```
+
+This applies to `MText`, `MEmote`, and `MNotice` in `MsgTypeRenderers.tsx` — all three were fixed.
+
+### CSP needs explicit frame-src for iframes
+
+Without `frame-src`, the CSP falls back to `default-src`. While our `default-src` is permissive, being explicit prevents surprises. YouTube/Twitter iframe embeds need:
+
+```json
+"csp": "... frame-src 'self' https: http:; ..."
+```
+
+### blob: URLs can't be opened externally
+
+The OS doesn't understand `blob:` scheme URLs. Two fixes needed:
+
+1. **Rust new-window handler** — skip `opener().open_url()` for blob: URLs
+2. **Frontend click interceptor** — catch clicks on `<a href="blob:...">` and trigger a download via a temporary anchor element
+
+```rust
+// lib.rs on_new_window handler
+if url.scheme() != "blob" {
+    let _ = app_handle.opener().open_url(url.as_str(), None::<&str>);
+}
+NewWindowResponse::Deny
+```
+
+### Use cargo check before committing Rust changes
+
+A full platform build takes 20+ minutes in CI. `cargo check` catches compilation errors in seconds:
+
+```bash
+source ~/.cargo/env && cargo check 2>&1 | grep "^error"
+```
+
+### Verify npm build before pushing
+
+Vite catches import errors and type issues. Runs in under a minute:
+
+```bash
+cd cinny && npm run build 2>&1 | tail -5
+# Should end with: ✓ built in ...
+```
