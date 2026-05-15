@@ -118,7 +118,7 @@ jobs:
         run: node scripts/bump-version.mjs
 
       - name: Strip pubkey for unsigned updater
-        run: node -e "const f='src-tauri/tauri.conf.json';const c=require('fs').readFileSync(f,'utf8');const j=JSON.parse(c);j.plugins.updater.pubkey='';require('fs').writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
+        run: node -e "const f='src-tauri/tauri.conf.json';const c=require('fs').readFileSync(f,'utf8');const j=JSON.parse(c);delete j.plugins.updater.pubkey;require('fs').writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
 
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@73fb865345c54760d875b94642314f8c0c894afa # v0.6.1
@@ -127,6 +127,10 @@ jobs:
           NODE_OPTIONS: --max_old_space_size=4096
         with:
           args: --config '{"bundle":{"createUpdaterArtifacts":"v1Compatible"}}'
+
+      - name: Restore pubkey in tauri.conf.json
+        if: always()
+        run: git checkout src-tauri/tauri.conf.json
 
       - name: Get version
         shell: pwsh
@@ -191,7 +195,7 @@ jobs:
         run: node scripts/bump-version.mjs
 
       - name: Strip pubkey for unsigned updater
-        run: node -e "const f='src-tauri/tauri.conf.json';const c=require('fs').readFileSync(f,'utf8');const j=JSON.parse(c);j.plugins.updater.pubkey='';require('fs').writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
+        run: node -e "const f='src-tauri/tauri.conf.json';const c=require('fs').readFileSync(f,'utf8');const j=JSON.parse(c);delete j.plugins.updater.pubkey;require('fs').writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
 
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@73fb865345c54760d875b94642314f8c0c894afa # v0.6.1
@@ -200,6 +204,10 @@ jobs:
           NODE_OPTIONS: --max_old_space_size=4096
         with:
           args: --config '{"bundle":{"createUpdaterArtifacts":"v1Compatible"}}'
+
+      - name: Restore pubkey in tauri.conf.json
+        if: always()
+        run: git checkout src-tauri/tauri.conf.json
 
       - name: Get version
         id: vars
@@ -263,7 +271,7 @@ jobs:
         run: node scripts/bump-version.mjs
 
       - name: Strip pubkey for unsigned updater
-        run: node -e "const f='src-tauri/tauri.conf.json';const c=require('fs').readFileSync(f,'utf8');const j=JSON.parse(c);j.plugins.updater.pubkey='';require('fs').writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
+        run: node -e "const f='src-tauri/tauri.conf.json';const c=require('fs').readFileSync(f,'utf8');const j=JSON.parse(c);delete j.plugins.updater.pubkey;require('fs').writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
 
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@73fb865345c54760d875b94642314f8c0c894afa # v0.6.1
@@ -272,6 +280,10 @@ jobs:
           NODE_OPTIONS: --max_old_space_size=4096
         with:
           args: --target universal-apple-darwin --config '{"bundle":{"createUpdaterArtifacts":"v1Compatible"}}'
+
+      - name: Restore pubkey in tauri.conf.json
+        if: always()
+        run: git checkout src-tauri/tauri.conf.json
 
       - name: Get version
         id: vars
