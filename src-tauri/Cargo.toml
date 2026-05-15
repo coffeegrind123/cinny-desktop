@@ -30,7 +30,6 @@ tauri-plugin-process = "2"
 tauri-plugin-os = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
-tauri-plugin-cors-fetch = "5.0.0"
 
 [features]
 # by default Tauri runs in production mode
