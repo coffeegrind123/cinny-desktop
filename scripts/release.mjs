@@ -101,20 +101,18 @@ async function createTauriRelease() {
     platforms: {},
   };
 
-  if (windowsX86_64.url) releaseData.platforms["windows-x86_64"] = windowsX86_64;
-  else console.log('No windows-x86_64 updater artifact (signing key not configured)');
-
-  if (linuxX86_64.url) releaseData.platforms["linux-x86_64"] = linuxX86_64;
-  else console.log('No linux-x86_64 updater artifact (signing key not configured)');
-
-  if (darwinX86_64.url) releaseData.platforms["darwin-x86_64"] = darwinX86_64;
-  else console.log('No darwin-x86_64 updater artifact (signing key not configured)');
-
-  if (darwinAarch64.url) releaseData.platforms["darwin-aarch64"] = darwinAarch64;
-  else console.log('No darwin-aarch64 updater artifact (signing key not configured)');
-
-  if (android.url) releaseData.platforms["android"] = android;
-  else console.log('No android updater artifact');
+  const setPlatform = (key, obj) => {
+    if (obj.url) {
+      releaseData.platforms[key] = { signature: '', ...obj };
+    } else {
+      console.log(`No ${key} updater artifact (signing key not configured)`);
+    }
+  };
+  setPlatform('windows-x86_64', windowsX86_64);
+  setPlatform('linux-x86_64', linuxX86_64);
+  setPlatform('darwin-x86_64', darwinX86_64);
+  setPlatform('darwin-aarch64', darwinAarch64);
+  setPlatform('android', android);
 
   // Get or create the "tauri" release used as updater metadata storage
   let tauriRelease;
