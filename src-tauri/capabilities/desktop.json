@@ -1,6 +1,11 @@
 {
   "identifier": "desktop-capability",
   "local": true,
+  "remote": {
+    "urls": [
+      "http://localhost:44548"
+    ]
+  },
   "platforms": [
     "macOS",
     "windows",
