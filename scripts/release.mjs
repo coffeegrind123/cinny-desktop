@@ -40,8 +40,9 @@ async function createTauriRelease() {
   const promises = latestAssets.map(async (asset) => {
     const { name, browser_download_url } = asset;
 
-    // Windows: .msi (non-updater) or .exe installer
-    if (/\.msi$/.test(name) && !/\.msi\.zip/.test(name)) {
+    // Windows: .msi/.exe installer (non-updater)
+    if ((/\.msi$/.test(name) && !/\.msi\.zip/.test(name)) ||
+        (/\.exe$/.test(name) && !/\.nsis\.zip/.test(name))) {
       windowsX86_64.url = browser_download_url;
     }
 
@@ -57,10 +58,10 @@ async function createTauriRelease() {
     }
 
     // Updater artifacts (signed — only if TAURI_SIGNING_PRIVATE_KEY is set)
-    if (/\.msi\.zip$/.test(name)) {
+    if (/\.msi\.zip$/.test(name) || /\.nsis\.zip$/.test(name)) {
       windowsX86_64.url = browser_download_url;
     }
-    if (/\.msi\.zip\.sig$/.test(name)) {
+    if (/\.msi\.zip\.sig$/.test(name) || /\.nsis\.zip\.sig$/.test(name)) {
       windowsX86_64.signature = await getAssetSign(browser_download_url);
     }
 
