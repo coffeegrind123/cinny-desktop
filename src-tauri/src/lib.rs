@@ -10,6 +10,13 @@ use tauri_plugin_opener::OpenerExt;
 
 mod taskbar;
 
+#[cfg(not(mobile))]
+mod ytdlp_manager;
+#[cfg(not(mobile))]
+mod ytdlp_updater;
+#[cfg(not(mobile))]
+mod ytdlp_commands;
+
 // Embedded overlay icons for Windows taskbar badge (1-9, 9+)
 #[cfg(target_os = "windows")]
 const BADGE_ICONS: &[&[u8]] = &[
@@ -86,7 +93,21 @@ pub fn run() {
     let port: u16 = 44548;
     let context = tauri::generate_context!();
     let mut builder = tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![set_badge_count])
+        .invoke_handler(tauri::generate_handler![
+            set_badge_count,
+            #[cfg(not(mobile))]
+            ytdlp_commands::ytdlp_get_version,
+            #[cfg(not(mobile))]
+            ytdlp_commands::ytdlp_get_video_info,
+            #[cfg(not(mobile))]
+            ytdlp_commands::ytdlp_check_update,
+            #[cfg(not(mobile))]
+            ytdlp_commands::ytdlp_download_binary,
+            #[cfg(not(mobile))]
+            ytdlp_commands::ytdlp_download_video,
+            #[cfg(not(mobile))]
+            ytdlp_commands::ytdlp_cancel_download,
+        ])
         .plugin(tauri_plugin_localhost::Builder::new(port).build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
