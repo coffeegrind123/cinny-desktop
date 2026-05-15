@@ -63,6 +63,60 @@ git add cinny && git commit -m "Update cinny submodule"
 
 **If git submodule update pulls the wrong commit:** It tracks `origin/dev` by default. Always explicitly checkout `desktop-notifications` in the submodule after `git submodule update --init`.
 
+## Upstream sync (cinny submodule)
+
+The cinny submodule is a fork of `cinnyapp/cinny`. Periodically we cherry-pick upstream changes into our `desktop-notifications` branch.
+
+**Tracking file:** `cinny/UPSTREAM_BACKPORT_LOG.md` — lists every upstream commit since our fork point with `[x]` (backported) / `[-]` (skipped as noise) / `[~]` (partial) status. The last entry marked **START HERE** tells you which SHA to start from on the next sync.
+
+### Add upstream remote (one-time)
+
+```bash
+cd cinny
+git remote add upstream https://github.com/cinnyapp/cinny.git
+```
+
+### Sync process
+
+```bash
+cd cinny
+git fetch upstream --tags
+
+# Check what's new since last sync
+# Open UPSTREAM_BACKPORT_LOG.md, find the "START HERE" marker SHA
+git log --oneline <last-synced-sha>..upstream/dev --reverse --no-merges
+
+# Filter out noise: chore, CI deps bumps, release tags, docs-only changes
+# Cherry-pick meaningful commits oldest-first
+# Resolve conflicts: ALWAYS preserve our custom features:
+#   - YouTube/Twitter embeds in UrlPreviewCard
+#   - Presence badges in RoomNavItem  
+#   - MobileSwipeBack in Room
+#   - tauri-plugin entries in package-lock.json
+#   - FxTwitter URL rewriting
+#   - FocusTrap fallback for image viewer
+
+# After all cherry-picks done, update UPSTREAM_BACKPORT_LOG.md with status
+# of every new commit. Move the START HERE marker to the last upstream commit.
+
+# Push
+git push origin desktop-notifications
+
+# Then update the submodule pointer from the parent repo:
+cd /opt/openclaude-src/cinny-desktop
+git add cinny
+git commit -m "Update cinny submodule"
+```
+
+### Conflict-heavy files (expect conflicts every sync)
+
+| File | Why |
+|------|-----|
+| `src/app/components/url-preview/UrlPreviewCard.tsx` | Heavily customized — YouTube/Twitter/video/audio embeds, dismiss button, expand/collapse, FxTwitter. Upstream keeps this file simple. |
+| `src/app/features/room-nav/RoomNavItem.tsx` | Presence badges + call permissions logic both modify imports and handlers |
+| `src/app/features/room/Room.tsx` | Our MobileSwipeBack import vs upstream's call embed imports |
+| `package-lock.json` | We have extra deps (tauri-plugin-mobile-push-api etc.) not in upstream |
+
 ## Critical: working directory
 
 **The Bash tool's CWD persists between commands.** After `cd cinny`, all subsequent Bash calls run from there. `npm run tauri` fails with "Missing script: tauri" because `cinny/package.json` doesn't have that script. Always verify `pwd` before build commands.
