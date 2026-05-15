@@ -17,6 +17,7 @@
   "permissions": [
     "notification:default",
     "notification:allow-register-action-types",
+    "notification:allow-register-listener",
     "updater:default",
     "updater:allow-check",
     "updater:allow-download-and-install",
