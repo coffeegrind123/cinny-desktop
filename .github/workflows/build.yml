@@ -6,6 +6,10 @@ on:
     tags:
       - 'v*'
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ── Auto-create release (main push auto-versions, tag push uses tag) ──
   create-release:
@@ -392,6 +396,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install dependencies
@@ -400,3 +405,14 @@ jobs:
         run: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Purge old workflow runs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          KEEP=20
+          gh run list --workflow=build.yml --status=completed --json databaseId,status --jq '.[].databaseId' \
+            | tail -n +$((KEEP + 1)) \
+            | while read id; do
+              echo "Deleting run $id"
+              gh run delete "$id" || true
+            done
