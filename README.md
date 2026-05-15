@@ -77,7 +77,7 @@ Everything below is what this fork adds on top of upstream [Cinny](https://cinny
 | Discord-style embeds | 4px left accent border, theme surface background. Title, description, site name, and image in a clean card layout |
 | Clickable embed images | Click any embed image to open it full-screen in the image viewer |
 | Video embeds | `.mp4`/`.webm` links and `og:video` content render as inline HTML5 video players with controls |
-| Invidious for YouTube | Settings → General → toggle rewrites YouTube embed URLs through `inv.nadeko.net` (enabled by default) |
+| YouTube embeds | YouTube links render as embedded iframe video player |
 | fxtwitter for Twitter/X | Settings → General → toggle rewrites Twitter/X embed URLs through `fxtwitter.com` for better media embeds (enabled by default) |
 | Image viewer | Full-screen dark backdrop (85% black). Floating top bar with back button, filename, zoom controls, and download — two separate pill groups with theme styling. Click backdrop or press Escape to close |
 

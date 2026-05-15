@@ -10,12 +10,6 @@ use tauri_plugin_opener::OpenerExt;
 
 mod taskbar;
 
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
-mod ytdlp_manager;
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
-mod ytdlp_updater;
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
-mod ytdlp_commands;
 
 // Embedded overlay icons for Windows taskbar badge (1-9, 9+)
 #[cfg(target_os = "windows")]
@@ -61,20 +55,6 @@ fn foreground_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
         .build()
 }
 
-fn ytdlp_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
-    tauri::plugin::Builder::new("ytdlp")
-        .setup(|_app, _api| {
-            #[cfg(target_os = "android")]
-            {
-                let _handle = _api.register_android_plugin("in.prinny.app", "YtDlpPlugin")?;
-            }
-            #[cfg(not(target_os = "android"))]
-            let _ = &_api;
-            Ok(())
-        })
-        .build()
-}
-
 #[tauri::command]
 fn set_badge_count(window: tauri::Window, count: u32) {
     #[cfg(target_os = "windows")]
@@ -109,18 +89,6 @@ pub fn run() {
     let mut builder = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             set_badge_count,
-            #[cfg(not(any(target_os = "android", target_os = "ios")))]
-            ytdlp_commands::ytdlp_get_version,
-            #[cfg(not(any(target_os = "android", target_os = "ios")))]
-            ytdlp_commands::ytdlp_get_video_info,
-            #[cfg(not(any(target_os = "android", target_os = "ios")))]
-            ytdlp_commands::ytdlp_check_update,
-            #[cfg(not(any(target_os = "android", target_os = "ios")))]
-            ytdlp_commands::ytdlp_download_binary,
-            #[cfg(not(any(target_os = "android", target_os = "ios")))]
-            ytdlp_commands::ytdlp_download_video,
-            #[cfg(not(any(target_os = "android", target_os = "ios")))]
-            ytdlp_commands::ytdlp_cancel_download,
         ])
         .plugin(tauri_plugin_localhost::Builder::new(port).build())
         .plugin(tauri_plugin_opener::init())
@@ -134,8 +102,7 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(unifiedpush_plugin())
-        .plugin(foreground_plugin())
-        .plugin(ytdlp_plugin());
+        .plugin(foreground_plugin());
 
     #[cfg(not(mobile))]
     {
@@ -172,7 +139,10 @@ pub fn run() {
 
             window_builder
                 .on_new_window(move |url, _features| {
-                    let _ = app_handle.opener().open_url(url.as_str(), None::<&str>);
+                    // blob: URLs are internal to the webview, skip external open
+                    if url.scheme() != "blob" {
+                        let _ = app_handle.opener().open_url(url.as_str(), None::<&str>);
+                    }
                     NewWindowResponse::Deny
                 })
                 .build()?;
