@@ -85,8 +85,10 @@ mod win {
 }
 
 #[cfg(not(target_os = "windows"))]
+#[allow(dead_code, unused_imports)]
 mod win {
     pub fn set_overlay(_hwnd: isize, _icon_data: Option<&[u8]>) {}
 }
 
+#[allow(unused_imports)]
 pub use win::set_overlay;
