@@ -134,7 +134,7 @@ pub fn run() {
 
             #[cfg(not(mobile))]
             {
-                window_builder = window_builder.inner_size(800.0, 720.0);
+                window_builder = window_builder.inner_size(800.0, 770.0);
             }
 
             window_builder
