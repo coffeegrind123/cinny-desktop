@@ -137,6 +137,12 @@ pub fn run() {
                 window_builder = window_builder.inner_size(800.0, 790.0);
             }
 
+            // Disable Tauri's native drag-drop handler so the WebView fires browser
+            // dragenter/dragover/drop events normally. The frontend listens for these
+            // at the app root (useGlobalDropListener) to route dropped files into
+            // the open conversation's attachment list.
+            window_builder = window_builder.disable_drag_drop_handler();
+
             window_builder
                 .on_new_window(move |url, _features| {
                     // blob: URLs are internal to the webview, skip external open
