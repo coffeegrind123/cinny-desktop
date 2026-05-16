@@ -55,6 +55,76 @@ fn foreground_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
         .build()
 }
 
+fn message_notification_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
+    tauri::plugin::Builder::new("messageNotification")
+        .setup(|_app, api| {
+            #[cfg(target_os = "android")]
+            {
+                let _handle = api.register_android_plugin("in.cinny.app", "MessageNotificationPlugin")?;
+            }
+            #[cfg(not(target_os = "android"))]
+            let _ = &api;
+            Ok(())
+        })
+        .build()
+}
+
+// Downloads a remote image (typically a Matrix sender/room avatar) and writes
+// it to the OS app-cache directory. Returns the absolute path. Used by the
+// notification frontend so platform code (notify-rust on desktop, our custom
+// Kotlin plugin on Android) can pass a real file path to the toast — both
+// notify-rust (Windows winrt-notification path) and Android's
+// Notification.Builder.setLargeIcon require an actual file, not a data URI.
+//
+// The filename is a SHA-256 of the URL so repeat lookups hit the cache.
+#[tauri::command]
+async fn cache_notification_icon(
+    app: tauri::AppHandle,
+    url: String,
+) -> Result<String, String> {
+    use sha2::{Digest, Sha256};
+    use std::fs;
+    use tauri::Manager;
+
+    let mut hasher = Sha256::new();
+    hasher.update(url.as_bytes());
+    let hash = hex::encode(&hasher.finalize()[..16]);
+
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| format!("app_cache_dir: {e}"))?;
+    let icons_dir = cache_dir.join("notif-icons");
+    fs::create_dir_all(&icons_dir).map_err(|e| format!("create_dir_all: {e}"))?;
+
+    let file_path = icons_dir.join(format!("{hash}.img"));
+    if file_path.exists() {
+        return Ok(file_path.to_string_lossy().to_string());
+    }
+
+    let client = reqwest::Client::builder()
+        .user_agent(
+            "Mozilla/5.0 (compatible; PrinnyNotificationIcon/1.0)",
+        )
+        .build()
+        .map_err(|e| format!("client: {e}"))?;
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("send: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("HTTP {}", resp.status()));
+    }
+    let bytes = resp
+        .bytes()
+        .await
+        .map_err(|e| format!("bytes: {e}"))?;
+    fs::write(&file_path, &bytes).map_err(|e| format!("write: {e}"))?;
+
+    Ok(file_path.to_string_lossy().to_string())
+}
+
 #[tauri::command]
 fn set_badge_count(window: tauri::Window, count: u32) {
     #[cfg(target_os = "windows")]
@@ -89,6 +159,7 @@ pub fn run() {
     let mut builder = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             set_badge_count,
+            cache_notification_icon,
         ])
         .plugin(tauri_plugin_localhost::Builder::new(port).build())
         .plugin(tauri_plugin_opener::init())
@@ -102,7 +173,8 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(unifiedpush_plugin())
-        .plugin(foreground_plugin());
+        .plugin(foreground_plugin())
+        .plugin(message_notification_plugin());
 
     #[cfg(not(mobile))]
     {
