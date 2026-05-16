@@ -125,6 +125,33 @@ async fn cache_notification_icon(
     Ok(file_path.to_string_lossy().to_string())
 }
 
+// Reads a file dropped onto the window via Tauri's native drag-drop event and
+// returns its bytes plus inferred MIME. Used in place of WebView2's HTML5
+// DragEvent path because WebView2 hands JS zero-byte File stubs from
+// dataTransfer.files on Windows — no real content reaches the page.
+#[derive(serde::Serialize)]
+struct DroppedFile {
+    name: String,
+    mime: String,
+    bytes: Vec<u8>,
+}
+
+#[tauri::command]
+async fn read_dropped_file(path: String) -> Result<DroppedFile, String> {
+    let path_buf = std::path::PathBuf::from(&path);
+    let name = path_buf
+        .file_name()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "file".to_string());
+    let mime = mime_guess::from_path(&path_buf)
+        .first_or_octet_stream()
+        .essence_str()
+        .to_string();
+    let bytes = std::fs::read(&path_buf).map_err(|e| format!("read {}: {}", path, e))?;
+    Ok(DroppedFile { name, mime, bytes })
+}
+
 #[tauri::command]
 fn set_badge_count(window: tauri::Window, count: u32) {
     #[cfg(target_os = "windows")]
@@ -160,6 +187,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             set_badge_count,
             cache_notification_icon,
+            read_dropped_file,
         ])
         .plugin(tauri_plugin_localhost::Builder::new(port).build())
         .plugin(tauri_plugin_opener::init())
@@ -209,11 +237,11 @@ pub fn run() {
                 window_builder = window_builder.inner_size(800.0, 790.0);
             }
 
-            // Disable Tauri's native drag-drop handler so the WebView fires browser
-            // dragenter/dragover/drop events normally. The frontend listens for these
-            // at the app root (useGlobalDropListener) to route dropped files into
-            // the open conversation's attachment list.
-            window_builder = window_builder.disable_drag_drop_handler();
+            // Keep Tauri's native drag-drop handler enabled. WebView2 (Windows)
+            // hands JS zero-byte File stubs from dataTransfer.files when the OS
+            // drag-drop path is bypassed, so the frontend listens for Tauri's
+            // own drag-drop event (real OS paths) via useTauriDragDropListener
+            // and reads bytes through read_dropped_file.
 
             window_builder
                 .on_new_window(move |url, _features| {
