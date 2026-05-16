@@ -32,7 +32,7 @@ fn unifiedpush_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
         .setup(|_app, api| {
             #[cfg(target_os = "android")]
             {
-                let _handle = api.register_android_plugin("in.cinny.app", "UnifiedPushPlugin")?;
+                let _handle = api.register_android_plugin("in.prinny.app", "UnifiedPushPlugin")?;
             }
             #[cfg(not(target_os = "android"))]
             let _ = &api;
@@ -46,7 +46,7 @@ fn foreground_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
         .setup(|_app, api| {
             #[cfg(target_os = "android")]
             {
-                let _handle = api.register_android_plugin("in.cinny.app", "ForegroundServicePlugin")?;
+                let _handle = api.register_android_plugin("in.prinny.app", "ForegroundServicePlugin")?;
             }
             #[cfg(not(target_os = "android"))]
             let _ = &api;
@@ -60,7 +60,7 @@ fn message_notification_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugi
         .setup(|_app, api| {
             #[cfg(target_os = "android")]
             {
-                let _handle = api.register_android_plugin("in.cinny.app", "MessageNotificationPlugin")?;
+                let _handle = api.register_android_plugin("in.prinny.app", "MessageNotificationPlugin")?;
             }
             #[cfg(not(target_os = "android"))]
             let _ = &api;
