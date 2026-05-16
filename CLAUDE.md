@@ -93,7 +93,7 @@ git log --oneline <last-synced-sha>..upstream/dev --reverse --no-merges
 #   - Presence badges in RoomNavItem  
 #   - MobileSwipeBack in Room
 #   - tauri-plugin entries in package-lock.json
-#   - FxTwitter URL rewriting
+#   - vxtwitter API client-side fetch (useVxTwitter setting) for Twitter/X media
 #   - FocusTrap fallback for image viewer
 
 # After all cherry-picks done, update UPSTREAM_BACKPORT_LOG.md with status
@@ -103,7 +103,7 @@ git log --oneline <last-synced-sha>..upstream/dev --reverse --no-merges
 git push origin desktop-notifications
 
 # Then update the submodule pointer from the parent repo:
-cd /opt/openclaude-src/cinny-desktop
+cd /opt/openclaude-src/prinny-client
 git add cinny
 git commit -m "Update cinny submodule"
 ```
@@ -112,7 +112,7 @@ git commit -m "Update cinny submodule"
 
 | File | Why |
 |------|-----|
-| `src/app/components/url-preview/UrlPreviewCard.tsx` | Heavily customized — YouTube/Twitter/video/audio embeds, dismiss button, expand/collapse, FxTwitter. Upstream keeps this file simple. |
+| `src/app/components/url-preview/UrlPreviewCard.tsx` | Heavily customized — YouTube (Piped), Twitter/X (vxtwitter direct media), Bandcamp og:video, SoundCloud (soundcloak), generic mp4/webm video, audio (mp3/ogg/etc.), dismiss button, expand/collapse. Upstream keeps this file simple. |
 | `src/app/features/room-nav/RoomNavItem.tsx` | Presence badges + call permissions logic both modify imports and handlers |
 | `src/app/features/room/Room.tsx` | Our MobileSwipeBack import vs upstream's call embed imports |
 | `package-lock.json` | We have extra deps (tauri-plugin-mobile-push-api etc.) not in upstream |
@@ -123,7 +123,7 @@ git commit -m "Update cinny submodule"
 
 ```bash
 # Safe one-liner from anywhere:
-source ~/.cargo/env && cd /opt/openclaude-src/cinny-desktop && npm run tauri build -- --target x86_64-pc-windows-gnu
+source ~/.cargo/env && cd /opt/openclaude-src/prinny-client && npm run tauri build -- --target x86_64-pc-windows-gnu
 ```
 
 **Also:** `source ~/.cargo/env` must run in every Bash call — shell state is not preserved.
@@ -233,7 +233,7 @@ Also check `free -h` before building — if swap is full (>5GB used), something 
 # Kill any stale processes from previous failed builds first
 pkill -f "cargo build.*cinny" 2>/dev/null
 
-cd /opt/openclaude-src/cinny-desktop/src-tauri
+cd /opt/openclaude-src/prinny-client/src-tauri
 cargo clean                          # frees 7-16GB
 rm -rf gen/android/app/build         # clean Gradle build output
 rm -rf gen/android/buildSrc/build    # clean Gradle buildSrc (needed after RustPlugin.kt changes)
@@ -246,12 +246,12 @@ The Gradle JVM heap is capped at 2GB (`-Xmx2048m` in `gradle.properties`). This 
 ```bash
 # 1. Clean (frees 15+ GB — essential for OOM avoidance)
 source ~/.cargo/env
-cd /opt/openclaude-src/cinny-desktop/src-tauri
+cd /opt/openclaude-src/prinny-client/src-tauri
 cargo clean
 rm -rf gen/android/app/build
 
 # 2. Build release APK (CARGO_BUILD_JOBS=1 is CRITICAL — prevents OOM)
-cd /opt/openclaude-src/cinny-desktop
+cd /opt/openclaude-src/prinny-client
 CARGO_BUILD_JOBS=1 \
 ANDROID_HOME=/opt/android-sdk \
 ANDROID_SDK_ROOT=/opt/android-sdk \
@@ -378,7 +378,7 @@ JS: startForegroundService()
 ### Iteration (Linux → Windows)
 
 1. Edit source in `cinny/src/` or `src-tauri/`
-2. `source ~/.cargo/env && cd /opt/openclaude-src/cinny-desktop && npm run tauri build -- --target x86_64-pc-windows-gnu`
+2. `source ~/.cargo/env && cd /opt/openclaude-src/prinny-client && npm run tauri build -- --target x86_64-pc-windows-gnu`
 3. Copy `cinny.exe` or the NSIS installer to Windows
 4. Install and run from Start Menu (required for toast notifications — see below)
 
@@ -494,13 +494,13 @@ When you change files inside `cinny/src/`:
 
 ```bash
 # Step 1: Commit and push in the submodule (to the desktop-notifications branch)
-cd /opt/openclaude-src/cinny-desktop/cinny
+cd /opt/openclaude-src/prinny-client/cinny
 git add -A
 git commit -m "Fix: describe your change"
 git push origin desktop-notifications
 
 # Step 2: From the MAIN REPO ROOT, update the submodule pointer
-cd /opt/openclaude-src/cinny-desktop    # ← MUST be at repo root
+cd /opt/openclaude-src/prinny-client    # ← MUST be at repo root
 git add cinny
 git commit -m "Update cinny submodule"
 unset GITHUB_TOKEN && git push
@@ -566,6 +566,32 @@ if url.scheme() != "blob" {
 }
 NewWindowResponse::Deny
 ```
+
+### HTML5 drag-and-drop is disabled by default in Tauri v2
+
+Tauri v2 webviews intercept native OS drag-and-drop and emit Tauri events to Rust — but the WebView's browser-level `dragenter`/`dragover`/`drop` events do **not** fire. Any frontend `useEffect` registering a global `drop` listener silently never runs.
+
+The unlock is one call on `WebviewWindowBuilder`:
+
+```rust
+window_builder = window_builder.disable_drag_drop_handler();
+```
+
+After this, dropped files arrive as a normal `DragEvent` with a populated `dataTransfer.files` — the frontend `useGlobalDropListener` in `src/app/pages/App.tsx` routes them through `setGlobalDropHandler`, which `RoomInput.tsx` registers to push files into the attachment list as if the paperclip button had been used.
+
+### Twitter/X media: don't iframe fxtwitter — render <video> direct from vxtwitter
+
+`video.twimg.com` returns 403 on any cross-origin Referer. Past attempts:
+
+1. Direct `<video src="https://video.twimg.com/...">` → 403 (Referer header sent)
+2. `<iframe src="https://fxtwitter.com/u/status/123">` → fxtwitter returns the full Twitter SPA, not a media player — video doesn't render in an iframe
+
+Working approach (`UrlPreviewCard.tsx` vxtwitter path):
+
+1. Detect Twitter/X URL in `getTwitterId`
+2. Client-side `fetch('https://api.vxtwitter.com/.../status/{id}')` (CORS-friendly)
+3. Render `<video src={mediaURL} referrerPolicy="no-referrer" />` — stripping Referer makes `video.twimg.com` serve the file
+4. Do **not** set `crossOrigin` — it triggers a CORS preflight that twimg blocks
 
 ### Use cargo check before committing Rust changes
 

@@ -41,6 +41,7 @@ Everything below is what this fork adds on top of upstream [Cinny](https://cinny
 | `Ctrl+/` shortcut panel | Discord-style modal showing all 49 keybinds grouped by category with keycap badges showing current bindings |
 | Configurable keybinds | Settings → Keybinds: click any binding, press new combo to rebind. Reset per-binding or Reset All. Editor hotkeys and toolbar tooltips reflect configured bindings |
 | Enter autocomplete | `:emoji:`, `/command`, `@user`, `#room` all complete first match on Enter (no arrow-key needed). First result auto-focused with visible highlight |
+| Drag-and-drop attachments | Drop files anywhere on the window to add them to the open conversation's attachment list — same path as the paperclip button. Tauri's native drag-drop handler is disabled (`disable_drag_drop_handler()`) so HTML5 drag-drop fires in the WebView |
 
 ### Message timeline
 
@@ -59,6 +60,7 @@ Everything below is what this fork adds on top of upstream [Cinny](https://cinny
 | Presence indicators | Online/busy/away dots on DM avatars and member list |
 | DM unread filter | "..." menu next to Direct Messages → "Show unread only" collapses list to rooms with unread messages |
 | Mobile swipe gestures | Right-edge swipe opens the active room, left-edge swipe goes back. Selected room highlights during swipe for visual feedback. Works on Home, Direct, and Space screens |
+| matrixrooms.info directory | Explore Community lists `matrixrooms.info` as a pre-configured directory server — MRS-backed federated public-room directory, browsable without joining the homeserver |
 
 ### Desktop shell
 
@@ -77,9 +79,13 @@ Everything below is what this fork adds on top of upstream [Cinny](https://cinny
 | Discord-style embeds | 4px left accent border, theme surface background. Title, description, site name, and image in a clean card layout |
 | Clickable embed images | Click any embed image to open it full-screen in the image viewer |
 | Video embeds | `.mp4`/`.webm` links and `og:video` content render as inline HTML5 video players with controls |
-| YouTube embeds | YouTube links render as embedded iframe video player |
-| fxtwitter for Twitter/X | Settings → General → toggle rewrites Twitter/X embed URLs through `fxtwitter.com` for better media embeds (enabled by default) |
+| Audio embeds | `.mp3`/`.ogg`/`.wav`/`.flac`/`.m4a`/`.aac` links render as inline `<audio>` players |
+| YouTube embeds | YouTube links render as embedded iframe video player. Settings → General → toggle redirects through `piped.private.coffee` for tracker-free playback (enabled by default) |
+| Twitter/X via vxtwitter | Settings → General → toggle (enabled by default) fetches `api.vxtwitter.com` client-side and renders full videos and images inline. Uses `referrerPolicy="no-referrer"` to bypass `video.twimg.com`'s 403 on cross-origin Referer |
+| SoundCloud via soundcloak | Settings → General → toggle (enabled by default) rewrites SoundCloud URLs through `sc1.maid.zone` and renders a direct streaming `<audio>` player |
+| Bandcamp embeds | Detects Bandcamp `og:video EmbeddedPlayer` URLs and renders them as a 120px-tall inline iframe player |
 | Image viewer | Full-screen dark backdrop (85% black). Floating top bar with back button, filename, zoom controls, and download — two separate pill groups with theme styling. Click backdrop or press Escape to close |
+| Dismissable embeds | Each URL preview card has an `×` button to dismiss it locally without affecting the message |
 
 ### Mobile (Android)
 
