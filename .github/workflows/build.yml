@@ -123,8 +123,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_OPTIONS: --max_old_space_size=4096
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          args: --config '{"bundle":{"createUpdaterArtifacts":false}}'
+          args: --config '{"bundle":{"createUpdaterArtifacts":"v1Compatible"}}'
 
       - name: Get version
         shell: pwsh
@@ -137,7 +139,8 @@ jobs:
         run: |
           Move-Item "src-tauri\target\release\bundle\msi\Prinny_${{ env.TAURI_VERSION }}_x64_en-US.msi" "src-tauri\target\release\bundle\msi\Prinny_desktop-x86_64.msi"
           Move-Item "src-tauri\target\release\bundle\nsis\Prinny_${{ env.TAURI_VERSION }}_x64-setup.exe" "src-tauri\target\release\bundle\nsis\Prinny_desktop-x86_64-setup.exe"
-          Move-Item "src-tauri\target\release\bundle\nsis\Prinny_${{ env.TAURI_VERSION }}_x64-setup.nsis.zip" "src-tauri\target\release\bundle\nsis\Prinny_desktop-x86_64-setup.nsis.zip" -ErrorAction SilentlyContinue
+          Move-Item "src-tauri\target\release\bundle\nsis\Prinny_${{ env.TAURI_VERSION }}_x64-setup.nsis.zip" "src-tauri\target\release\bundle\nsis\Prinny_desktop-x86_64-setup.nsis.zip"
+          Move-Item "src-tauri\target\release\bundle\nsis\Prinny_${{ env.TAURI_VERSION }}_x64-setup.nsis.zip.sig" "src-tauri\target\release\bundle\nsis\Prinny_desktop-x86_64-setup.nsis.zip.sig"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -146,6 +149,8 @@ jobs:
           path: |
             src-tauri/target/release/bundle/msi/Prinny_desktop-x86_64.msi
             src-tauri/target/release/bundle/nsis/Prinny_desktop-x86_64-setup.exe
+            src-tauri/target/release/bundle/nsis/Prinny_desktop-x86_64-setup.nsis.zip
+            src-tauri/target/release/bundle/nsis/Prinny_desktop-x86_64-setup.nsis.zip.sig
           if-no-files-found: error
 
       - name: Upload to release
@@ -157,6 +162,8 @@ jobs:
           files: |
             src-tauri/target/release/bundle/msi/Prinny_desktop-x86_64.msi
             src-tauri/target/release/bundle/nsis/Prinny_desktop-x86_64-setup.exe
+            src-tauri/target/release/bundle/nsis/Prinny_desktop-x86_64-setup.nsis.zip
+            src-tauri/target/release/bundle/nsis/Prinny_desktop-x86_64-setup.nsis.zip.sig
 
   # ── Linux x86_64 ────────────────────────────────────────────────
   linux-x86_64:
@@ -193,8 +200,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_OPTIONS: --max_old_space_size=4096
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          args: --config '{"bundle":{"createUpdaterArtifacts":false}}'
+          args: --config '{"bundle":{"createUpdaterArtifacts":"v1Compatible"}}'
 
       - name: Get version
         id: vars
@@ -204,9 +213,8 @@ jobs:
         run: |
           mv "src-tauri/target/release/bundle/deb/Prinny_${{ steps.vars.outputs.tag }}_amd64.deb" "src-tauri/target/release/bundle/deb/Prinny_desktop-x86_64.deb"
           mv "src-tauri/target/release/bundle/appimage/Prinny_${{ steps.vars.outputs.tag }}_amd64.AppImage" "src-tauri/target/release/bundle/appimage/Prinny_desktop-x86_64.AppImage"
-          if [ -f "src-tauri/target/release/bundle/appimage/Prinny_${{ steps.vars.outputs.tag }}_amd64.AppImage.tar.gz" ]; then
-            mv "src-tauri/target/release/bundle/appimage/Prinny_${{ steps.vars.outputs.tag }}_amd64.AppImage.tar.gz" "src-tauri/target/release/bundle/appimage/Prinny_desktop-x86_64.AppImage.tar.gz"
-          fi
+          mv "src-tauri/target/release/bundle/appimage/Prinny_${{ steps.vars.outputs.tag }}_amd64.AppImage.tar.gz" "src-tauri/target/release/bundle/appimage/Prinny_desktop-x86_64.AppImage.tar.gz"
+          mv "src-tauri/target/release/bundle/appimage/Prinny_${{ steps.vars.outputs.tag }}_amd64.AppImage.tar.gz.sig" "src-tauri/target/release/bundle/appimage/Prinny_desktop-x86_64.AppImage.tar.gz.sig"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -216,6 +224,7 @@ jobs:
             src-tauri/target/release/bundle/deb/Prinny_desktop-x86_64.deb
             src-tauri/target/release/bundle/appimage/Prinny_desktop-x86_64.AppImage
             src-tauri/target/release/bundle/appimage/Prinny_desktop-x86_64.AppImage.tar.gz
+            src-tauri/target/release/bundle/appimage/Prinny_desktop-x86_64.AppImage.tar.gz.sig
           if-no-files-found: error
 
       - name: Upload to release
@@ -228,6 +237,7 @@ jobs:
             src-tauri/target/release/bundle/deb/Prinny_desktop-x86_64.deb
             src-tauri/target/release/bundle/appimage/Prinny_desktop-x86_64.AppImage
             src-tauri/target/release/bundle/appimage/Prinny_desktop-x86_64.AppImage.tar.gz
+            src-tauri/target/release/bundle/appimage/Prinny_desktop-x86_64.AppImage.tar.gz.sig
 
   # ── macOS universal ─────────────────────────────────────────────
   macos-universal:
@@ -262,8 +272,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_OPTIONS: --max_old_space_size=4096
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          args: --target universal-apple-darwin --config '{"bundle":{"createUpdaterArtifacts":false}}'
+          args: --target universal-apple-darwin --config '{"bundle":{"createUpdaterArtifacts":"v1Compatible"}}'
 
       - name: Get version
         id: vars
@@ -273,6 +285,7 @@ jobs:
         run: |
           mv "src-tauri/target/universal-apple-darwin/release/bundle/dmg/Prinny_${{ steps.vars.outputs.tag }}_universal.dmg" "src-tauri/target/universal-apple-darwin/release/bundle/dmg/Prinny_desktop-universal.dmg"
           mv "src-tauri/target/universal-apple-darwin/release/bundle/macos/Prinny.app.tar.gz" "src-tauri/target/universal-apple-darwin/release/bundle/macos/Prinny_desktop-universal.app.tar.gz"
+          mv "src-tauri/target/universal-apple-darwin/release/bundle/macos/Prinny.app.tar.gz.sig" "src-tauri/target/universal-apple-darwin/release/bundle/macos/Prinny_desktop-universal.app.tar.gz.sig"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -281,6 +294,7 @@ jobs:
           path: |
             src-tauri/target/universal-apple-darwin/release/bundle/dmg/Prinny_desktop-universal.dmg
             src-tauri/target/universal-apple-darwin/release/bundle/macos/Prinny_desktop-universal.app.tar.gz
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/Prinny_desktop-universal.app.tar.gz.sig
           if-no-files-found: error
 
       - name: Upload to release
@@ -292,6 +306,7 @@ jobs:
           files: |
             src-tauri/target/universal-apple-darwin/release/bundle/dmg/Prinny_desktop-universal.dmg
             src-tauri/target/universal-apple-darwin/release/bundle/macos/Prinny_desktop-universal.app.tar.gz
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/Prinny_desktop-universal.app.tar.gz.sig
 
   # ── Android universal APK ───────────────────────────────────────
   android:

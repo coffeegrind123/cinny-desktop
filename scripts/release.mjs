@@ -31,37 +31,22 @@ async function createTauriRelease() {
   const latestRelease = await repos.getReleaseByTag({ ...repoMetaData, tag: latestTag.name });
   const latestAssets = latestRelease.data.assets;
 
+  // Signed updater artifacts: Windows (.nsis.zip), Linux (.AppImage.tar.gz),
+  // macOS universal (.app.tar.gz). darwin-x86_64 and darwin-aarch64 share
+  // the same universal artifact. Android uses its own native UpdateChecker
+  // (DownloadManager + APK install prompt) with a sha256 instead of minisign.
   const windowsX86_64 = {};
   const linuxX86_64 = {};
-  const darwinX86_64 = {};
-  const darwinAarch64 = {};
+  const darwinUniversal = {};
   const android = {};
 
   const promises = latestAssets.map(async (asset) => {
     const { name, browser_download_url } = asset;
 
-    // Windows: .msi/.exe installer (non-updater)
-    if ((/\.msi$/.test(name) && !/\.msi\.zip/.test(name)) ||
-        (/\.exe$/.test(name) && !/\.nsis\.zip/.test(name))) {
+    if (/\.nsis\.zip$/.test(name)) {
       windowsX86_64.url = browser_download_url;
     }
-
-    // Linux: .AppImage (non-updater)
-    if (/\.AppImage$/.test(name) && !/\.AppImage\.tar\.gz/.test(name)) {
-      linuxX86_64.url = browser_download_url;
-    }
-
-    // macOS: .dmg
-    if (/universal\.dmg$/.test(name)) {
-      darwinX86_64.url = browser_download_url;
-      darwinAarch64.url = browser_download_url;
-    }
-
-    // Updater artifacts (signed — only if TAURI_SIGNING_PRIVATE_KEY is set)
-    if (/\.msi\.zip$/.test(name) || /\.nsis\.zip$/.test(name)) {
-      windowsX86_64.url = browser_download_url;
-    }
-    if (/\.msi\.zip\.sig$/.test(name) || /\.nsis\.zip\.sig$/.test(name)) {
+    if (/\.nsis\.zip\.sig$/.test(name)) {
       windowsX86_64.signature = await getAssetSign(browser_download_url);
     }
 
@@ -72,13 +57,11 @@ async function createTauriRelease() {
       linuxX86_64.signature = await getAssetSign(browser_download_url);
     }
 
-    if (/universal\.app\.tar\.gz$/.test(name)) {
-      darwinX86_64.url = browser_download_url;
-      darwinAarch64.url = browser_download_url;
+    if (/\.app\.tar\.gz$/.test(name)) {
+      darwinUniversal.url = browser_download_url;
     }
-    if (/universal\.app\.tar\.gz\.sig$/.test(name)) {
-      darwinX86_64.signature = await getAssetSign(browser_download_url);
-      darwinAarch64.signature = await getAssetSign(browser_download_url);
+    if (/\.app\.tar\.gz\.sig$/.test(name)) {
+      darwinUniversal.signature = await getAssetSign(browser_download_url);
     }
 
     // Android: universal APK
@@ -101,18 +84,26 @@ async function createTauriRelease() {
     platforms: {},
   };
 
-  const setPlatform = (key, obj) => {
-    if (obj.url) {
-      releaseData.platforms[key] = { signature: '', ...obj };
+  // Each desktop platform is only emitted when BOTH the updater archive
+  // and its .sig are present. Emitting with an empty signature crashes
+  // the updater with "Invalid encoding in minisign data" on download.
+  const emit = (key, obj) => {
+    if (obj.url && obj.signature) {
+      releaseData.platforms[key] = obj;
     } else {
-      console.log(`No ${key} updater artifact (signing key not configured)`);
+      console.log(`No signed ${key} updater artifact (TAURI_SIGNING_PRIVATE_KEY not set, or build failed?)`);
     }
   };
-  setPlatform('windows-x86_64', windowsX86_64);
-  setPlatform('linux-x86_64', linuxX86_64);
-  setPlatform('darwin-x86_64', darwinX86_64);
-  setPlatform('darwin-aarch64', darwinAarch64);
-  setPlatform('android', android);
+  emit('windows-x86_64', windowsX86_64);
+  emit('linux-x86_64', linuxX86_64);
+  emit('darwin-x86_64', darwinUniversal);
+  emit('darwin-aarch64', darwinUniversal);
+
+  if (android.url) {
+    releaseData.platforms.android = android;
+  } else {
+    console.log('No android artifact');
+  }
 
   // Get or create the "tauri" release used as updater metadata storage
   let tauriRelease;

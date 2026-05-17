@@ -9,3 +9,6 @@ devAssets
 *.apk
 *.apk.idsig
 debug.keystore
+
+# Tauri updater minisign keypair + password — NEVER commit
+.secrets/

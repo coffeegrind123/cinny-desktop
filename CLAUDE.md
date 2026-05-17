@@ -460,6 +460,56 @@ Toast notifications require the app to have an AppUserModelID, which Windows ass
 | `cinny/src/app/features/settings/notifications/SystemNotification.tsx` | Permission UI |
 | `cinny/src/app/hooks/usePermission.ts` | Permission state with Tauri remapping |
 
+## In-app updater (Windows, Linux, macOS)
+
+`tauri-plugin-updater` requires a real minisign signature when a `pubkey` is configured. Empty signatures crash on download with **"Invalid encoding in minisign data"** (`tauri-plugin-updater-2.x/src/updater.rs:712` → `Signature::decode("")` → `InvalidEncoding`). There is no runtime flag to skip verification — the call site is unconditional. Every emitted platform MUST have a valid signature.
+
+All three desktop platforms are signed. Android handles updates natively (`UpdateChecker.kt`).
+
+### Required GitHub Actions secrets
+
+| Secret | Source |
+|---|---|
+| `TAURI_SIGNING_PRIVATE_KEY` | Single-line base64 contents of the minisign private key |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Password that protects the private key |
+
+Local copies live in `.secrets/` (gitignored). Public key is committed at `src-tauri/tauri.conf.json:plugins.updater.pubkey`. **If you rotate the keypair, existing installs cannot verify the new signatures — users need one manual reinstall to pick up the new compiled-in pubkey.**
+
+Regenerate with `npx @tauri-apps/cli signer generate --ci --password <pwd> --write-keys .secrets/prinny-updater.key --force`.
+
+### Per-platform updater archive format
+
+| Platform | Updater archive | Sig | Install mechanism |
+|---|---|---|---|
+| Windows | `.nsis.zip` | `.nsis.zip.sig` | Runs the embedded NSIS `.exe` installer in installer-mode |
+| Linux | `.AppImage.tar.gz` | `.AppImage.tar.gz.sig` | Replaces the running AppImage (only works if installed AS AppImage; .deb installs can't auto-update) |
+| macOS | `.app.tar.gz` | `.app.tar.gz.sig` | Replaces the .app bundle. Universal binary is reused for both `darwin-x86_64` and `darwin-aarch64` |
+| Android | `.apk` | `.apk.sha256` (not minisign) | Native `UpdateChecker.kt` via `DownloadManager` + install prompt |
+
+### Flow
+
+1. Every desktop CI job builds with `--config '{"bundle":{"createUpdaterArtifacts":"v1Compatible"}}'` and the two secrets in env. Tauri produces the platform's updater archive + `.sig`.
+2. `scripts/release.mjs` walks the release assets, pairs each archive with its sig, emits one entry in `platforms` per platform — only when BOTH the archive and the sig were uploaded.
+3. On launch, `useUpdateCheck` calls `@tauri-apps/plugin-updater` `check()`. Tauri picks the right platform entry, downloads the archive, verifies against the compiled-in pubkey, extracts, replaces, relaunches.
+
+### Key files
+
+| File | Role |
+|---|---|
+| `src-tauri/tauri.conf.json:plugins.updater.pubkey` | Compiled-in minisign pubkey |
+| `.github/workflows/build.yml` (windows-x86_64, linux-x86_64, macos-universal jobs) | `createUpdaterArtifacts:"v1Compatible"` + signing env, uploads updater archive + `.sig` |
+| `scripts/release.mjs` | Generates `release.json` — emits each desktop platform only when both archive + sig are present |
+| `cinny/src/app/hooks/useUpdateCheck.ts` | Tauri plugin-updater `check()` on all desktop targets |
+| `.secrets/` | Local copies of the minisign keypair + password (gitignored) |
+
+### Pitfalls
+
+- Emitting a platform with an empty signature (e.g. via the old `{ signature: '', ...obj }` fallback) makes the minisign decode error fire for every user on that platform. The `emit()` helper in `release.mjs` requires BOTH fields.
+- `--config` overrides apply at build time only — the compiled-in pubkey wins at runtime. If you ever need to disable verification temporarily, remove the pubkey from `tauri.conf.json` directly.
+- The `mv` for `.sig` files in CI has no fallback — missing sig means the secrets aren't set, and we want the build to fail loudly rather than silently ship an unsigned release that breaks the updater for everyone.
+- macOS .app.tar.gz is universal — same artifact serves both `darwin-x86_64` and `darwin-aarch64` in `release.json`.
+- Linux AppImage updater only works if the user is running the `.AppImage`. Users installed via `.deb` can't auto-update through Tauri — they need apt/manual reinstall.
+
 ## Common gotchas (lessons from broken CI builds)
 
 ### Removing a Rust module (e.g. yt-dlp)
