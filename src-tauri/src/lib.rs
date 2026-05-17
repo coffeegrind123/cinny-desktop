@@ -208,6 +208,90 @@ async fn read_dropped_file(path: String) -> Result<DroppedFile, String> {
     Ok(DroppedFile { name, mime, bytes })
 }
 
+// Windows toast with a real `appLogoOverride` avatar in the top-left.
+//
+// `tauri-plugin-notification` v2.3.3 calls `notify_rust::Notification::icon()`,
+// but on Windows that field is silently dropped — `notify-rust`'s Windows
+// backend (windows.rs) only reads `path_to_image` and even then renders the
+// image as a regular `<image id="1" src=…>` (inline below the body) rather
+// than as the app logo. Building the toast directly via
+// `tauri-winrt-notification` lets us emit the proper
+// `<image placement="appLogoOverride" hint-crop="circle" src=…>` element so
+// the avatar renders in the standard top-left position used by Discord,
+// Element, Slack, etc.
+//
+// The activation handler emits a `notification://activated` Tauri event so
+// the JS-side click listener can route the click back to the originating
+// room — the same flow `tauri-plugin-notification`'s `onAction` listener
+// provides on other platforms.
+#[cfg(target_os = "windows")]
+#[tauri::command]
+fn send_windows_message_toast(
+    app: tauri::AppHandle,
+    title: String,
+    body: String,
+    icon_path: Option<String>,
+    room_id: String,
+    event_id: String,
+) -> Result<(), String> {
+    use std::path::PathBuf;
+    use tauri::Emitter;
+    use tauri_winrt_notification::{IconCrop, Toast};
+
+    // Must match the AppUserModelID registered by the NSIS installer
+    // (`bundle.identifier` in tauri.conf.json). When this doesn't match,
+    // Windows silently drops the toast.
+    let app_id = app.config().identifier.clone();
+    let app_handle = app.clone();
+
+    // Showing the toast triggers WinRT activation events on the calling
+    // thread. tauri-plugin-notification's desktop backend spawns a thread
+    // for the same reason — see plugins/notification/src/desktop.rs in
+    // the Tauri repo. Running it on the tokio executor thread directly
+    // intermittently fires CO_E_NOTINITIALIZED.
+    std::thread::spawn(move || {
+        let mut toast = Toast::new(&app_id).title(&title).text1(&body);
+
+        if let Some(path) = icon_path.filter(|s| !s.is_empty()) {
+            let p = PathBuf::from(path);
+            if p.exists() {
+                toast = toast.icon(&p, IconCrop::Circular, &title);
+            }
+        }
+
+        toast = toast.add_button("Open", "open");
+
+        toast = toast.on_activated(move |_action| {
+            let _ = app_handle.emit(
+                "notification://activated",
+                serde_json::json!({
+                    "roomId": room_id,
+                    "eventId": event_id,
+                }),
+            );
+            Ok(())
+        });
+
+        if let Err(e) = toast.show() {
+            eprintln!("[notif] tauri-winrt-notification toast.show failed: {e:?}");
+        }
+    });
+
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+fn send_windows_message_toast(
+    _title: String,
+    _body: String,
+    _icon_path: Option<String>,
+    _room_id: String,
+    _event_id: String,
+) -> Result<(), String> {
+    Err("send_windows_message_toast is Windows-only".to_string())
+}
+
 #[tauri::command]
 fn set_badge_count(window: tauri::Window, count: u32) {
     #[cfg(target_os = "windows")]
@@ -245,6 +329,7 @@ pub fn run() {
             cache_notification_icon,
             read_dropped_file,
             fetch_remote_bytes,
+            send_windows_message_toast,
         ])
         .plugin(tauri_plugin_localhost::Builder::new(port).build())
         .plugin(tauri_plugin_opener::init())
