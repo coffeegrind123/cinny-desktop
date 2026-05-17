@@ -376,7 +376,7 @@ pub fn run() {
 
             #[cfg(not(mobile))]
             {
-                window_builder = window_builder.inner_size(800.0, 790.0);
+                window_builder = window_builder.inner_size(800.0, 800.0);
             }
 
             // Keep Tauri's native drag-drop handler enabled. WebView2 (Windows)
