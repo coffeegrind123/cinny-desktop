@@ -81,6 +81,7 @@ fn message_notification_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugi
 async fn cache_notification_icon(
     app: tauri::AppHandle,
     url: String,
+    auth_header: Option<String>,
 ) -> Result<String, String> {
     use sha2::{Digest, Sha256};
     use std::fs;
@@ -97,9 +98,15 @@ async fn cache_notification_icon(
     let icons_dir = cache_dir.join("notif-icons");
     fs::create_dir_all(&icons_dir).map_err(|e| format!("create_dir_all: {e}"))?;
 
-    let file_path = icons_dir.join(format!("{hash}.img"));
-    if file_path.exists() {
-        return Ok(file_path.to_string_lossy().to_string());
+    // Hit cache by checking for any file that matches the hash with a real
+    // image extension. Old `.img` entries (without a recognized extension)
+    // are deliberately skipped so they get re-fetched with a proper ext —
+    // Windows toast won't render `<image src="file:///…/foo.img" />`.
+    for ext in ["png", "jpg", "jpeg", "gif", "webp", "bmp"] {
+        let candidate = icons_dir.join(format!("{hash}.{ext}"));
+        if candidate.exists() {
+            return Ok(candidate.to_string_lossy().to_string());
+        }
     }
 
     let client = reqwest::Client::builder()
@@ -108,18 +115,40 @@ async fn cache_notification_icon(
         )
         .build()
         .map_err(|e| format!("client: {e}"))?;
-    let resp = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("send: {e}"))?;
+    let mut req = client.get(&url);
+    if let Some(auth) = auth_header.filter(|s| !s.is_empty()) {
+        req = req.header(reqwest::header::AUTHORIZATION, auth);
+    }
+    let resp = req.send().await.map_err(|e| format!("send: {e}"))?;
     if !resp.status().is_success() {
         return Err(format!("HTTP {}", resp.status()));
     }
-    let bytes = resp
-        .bytes()
-        .await
-        .map_err(|e| format!("bytes: {e}"))?;
+    let content_type = resp
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.split(';').next())
+        .map(|s| s.trim().to_ascii_lowercase());
+    let bytes = resp.bytes().await.map_err(|e| format!("bytes: {e}"))?;
+
+    let ext = match content_type.as_deref() {
+        Some("image/jpeg") | Some("image/jpg") | Some("image/pjpeg") => "jpg",
+        Some("image/gif") => "gif",
+        Some("image/webp") => "webp",
+        Some("image/bmp") => "bmp",
+        Some("image/png") => "png",
+        _ => match bytes.first_chunk::<4>() {
+            // sniff magic bytes when the server didn't tell us
+            Some([0xFF, 0xD8, 0xFF, _]) => "jpg",
+            Some([0x89, 0x50, 0x4E, 0x47]) => "png",
+            Some([0x47, 0x49, 0x46, _]) => "gif",
+            Some([0x52, 0x49, 0x46, 0x46]) => "webp",
+            Some([0x42, 0x4D, _, _]) => "bmp",
+            _ => "png",
+        },
+    };
+
+    let file_path = icons_dir.join(format!("{hash}.{ext}"));
     fs::write(&file_path, &bytes).map_err(|e| format!("write: {e}"))?;
 
     Ok(file_path.to_string_lossy().to_string())
