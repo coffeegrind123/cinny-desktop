@@ -136,6 +136,33 @@ struct DroppedFile {
     bytes: Vec<u8>,
 }
 
+// Proxy a remote URL through Rust reqwest and return the raw bytes. We can't
+// use the @tauri-apps/plugin-http path for this because its guest-js layer
+// constructs a browser `Headers` object, which silently drops forbidden
+// headers (User-Agent, Referer). The request then reaches reqwest with the
+// default `reqwest/x.x` UA and video.twimg.com 403s it. This command sends
+// a real Chrome UA and no Referer (twimg serves when Referer is absent).
+#[tauri::command]
+async fn fetch_remote_bytes(url: String) -> Result<tauri::ipc::Response, String> {
+    let client = reqwest::Client::builder()
+        .user_agent(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
+             (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+        )
+        .build()
+        .map_err(|e| format!("client: {e}"))?;
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("send: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("HTTP {}", resp.status()));
+    }
+    let bytes = resp.bytes().await.map_err(|e| format!("bytes: {e}"))?;
+    Ok(tauri::ipc::Response::new(bytes.to_vec()))
+}
+
 #[tauri::command]
 async fn read_dropped_file(path: String) -> Result<DroppedFile, String> {
     let path_buf = std::path::PathBuf::from(&path);
@@ -188,6 +215,7 @@ pub fn run() {
             set_badge_count,
             cache_notification_icon,
             read_dropped_file,
+            fetch_remote_bytes,
         ])
         .plugin(tauri_plugin_localhost::Builder::new(port).build())
         .plugin(tauri_plugin_opener::init())
