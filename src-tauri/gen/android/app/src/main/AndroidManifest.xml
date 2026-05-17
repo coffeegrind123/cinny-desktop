@@ -3,8 +3,27 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Element Call (in-room voice/video) — Android 14+ requires this for
+         mic capture from a foreground service so the WebSocket+mic survives
+         backgrounding mid-call. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- WebRTC capture for Element Call. Declared so the WebView's
+         PermissionRequest for RESOURCE_AUDIO_CAPTURE / VIDEO_CAPTURE can
+         be granted by MainActivity's WebChromeClient override. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Bluetooth headset routing during calls. Runtime BLUETOOTH_CONNECT
+         only matters from Android 12+; declared as not-required so older
+         devices can install without the feature. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- Camera/mic are optional — most users will only use voice, and TV
+         devices generally lack a camera. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
@@ -41,11 +60,14 @@
             </intent-filter>
         </receiver>
 
-        <!-- Foreground service: keeps Matrix WebSocket alive on GrapheneOS (no FCM) -->
+        <!-- Foreground service: keeps Matrix WebSocket alive on GrapheneOS (no FCM)
+             AND covers microphone capture for Element Call when the app is
+             backgrounded mid-call. Android 14+ requires the type bitmask to
+             match the runtime startForeground() call exactly. -->
         <service
             android:name=".ForegroundService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="dataSync|microphone" />
 
         <provider
           android:name="androidx.core.content.FileProvider"

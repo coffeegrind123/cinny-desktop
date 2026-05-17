@@ -37,16 +37,46 @@ class ForegroundService : Service() {
         var isRunning = false
             private set
 
+        // When `true`, startForeground() also includes the MICROPHONE
+        // service type so Android 14+ will let the WebView keep the mic
+        // open during Element Call when the app is backgrounded. Off by
+        // default so we don't permanently advertise mic usage to users
+        // who never call.
+        @Volatile
+        var microphoneActive: Boolean = false
+
         fun startWithForeground(service: ForegroundService) {
             try {
+                val typeBitmask = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    var mask = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                    if (microphoneActive) {
+                        mask = mask or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                    }
+                    mask
+                } else 0
+
                 service.startForeground(
                     NOTIFICATION_ID,
                     service.buildNotification(),
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-                    else 0
+                    typeBitmask
                 )
             } catch (_: Exception) {}
+        }
+
+        /**
+         * Toggle whether the foreground service advertises microphone use.
+         * Called from JS when an Element Call is joined / left so the mic
+         * stays accessible when the app is backgrounded mid-call.
+         */
+        fun setMicrophoneActive(context: Context, active: Boolean) {
+            microphoneActive = active
+            // Restart the foreground state to apply the new type bitmask.
+            val intent = Intent(context, ForegroundService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
         }
 
         /**

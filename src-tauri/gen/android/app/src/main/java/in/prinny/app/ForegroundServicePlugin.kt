@@ -37,4 +37,15 @@ class ForegroundServicePlugin(private val activity: Activity) : Plugin(activity)
         result.put("running", ForegroundService.isRunning)
         invoke.resolve(result)
     }
+
+    @Command
+    fun setMicrophoneActive(invoke: Invoke) {
+        val active = invoke.parseArgs(SetMicrophoneActiveArgs::class.java).active
+        ForegroundService.setMicrophoneActive(activity, active)
+        invoke.resolve()
+    }
+}
+
+class SetMicrophoneActiveArgs {
+    var active: Boolean = false
 }
