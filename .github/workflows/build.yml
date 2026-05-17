@@ -46,16 +46,17 @@ jobs:
         id: notes
         run: |
           TAG="${{ steps.version.outputs.tag }}"
-          PREV_TAG=$(git tag --sort=-v:refname | grep '^v' | head -2 | tail -1)
+          PREV_TAG=$(git tag --sort=-v:refname | grep '^v' | head -1)
+          # Write notes to a file (never to a $GITHUB_OUTPUT string) so commit
+          # subjects containing quotes / backticks / $ can't break later
+          # `gh release create --notes "..."` shell interpolation.
           if [ -z "$PREV_TAG" ]; then
-            echo "notes<<EOF" >> $GITHUB_OUTPUT
-            echo "Initial release." >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+            echo "Initial release." > release-notes.md
           else
-            echo "notes<<EOF" >> $GITHUB_OUTPUT
-            git log --oneline --no-merges "${PREV_TAG}..HEAD" | sed 's/^/- /' >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+            git log --oneline --no-merges "${PREV_TAG}..HEAD" | sed 's/^/- /' > release-notes.md
           fi
+          echo "--- release notes ---"
+          cat release-notes.md
 
       - name: Delete old versioned releases
         env:
@@ -81,11 +82,11 @@ jobs:
               gh release create "$TAG" \
                 --target "${{ github.sha }}" \
                 --title "Prinny Client $TAG" \
-                --notes "${{ steps.notes.outputs.notes }}"
+                --notes-file release-notes.md
             else
               gh release create "$TAG" \
                 --title "Prinny Client $TAG" \
-                --notes "${{ steps.notes.outputs.notes }}"
+                --notes-file release-notes.md
             fi
             echo "created=true" >> $GITHUB_OUTPUT
             echo "Published $TAG"
