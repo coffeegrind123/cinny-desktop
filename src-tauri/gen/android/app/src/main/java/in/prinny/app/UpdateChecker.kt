@@ -27,8 +27,13 @@ class UpdateChecker(private val context: Context) {
         Thread {
             try {
                 val json = fetchReleaseJson() ?: return@Thread
-                val platforms = json.optJSONObject("platforms") ?: return@Thread
-                val android = platforms.optJSONObject("android") ?: return@Thread
+                // Android lives at the top-level `android` key (not under `platforms`,
+                // which the Tauri updater deserializes as { signature, url } per entry —
+                // putting android there fails with "missing field signature").
+                // Fall back to platforms.android for older release.json versions.
+                val android = json.optJSONObject("android")
+                    ?: json.optJSONObject("platforms")?.optJSONObject("android")
+                    ?: return@Thread
 
                 val latestVersion = android.optString("version", "").removePrefix("v")
                 val apkUrl = android.optString("url", "")

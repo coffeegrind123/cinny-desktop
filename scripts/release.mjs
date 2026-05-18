@@ -78,7 +78,7 @@ async function createTauriRelease() {
   await Promise.allSettled(promises);
 
   const releaseData = {
-    name: latestTag.name,
+    version: latestTag.name,
     notes: `https://github.com/${repoMetaData.owner}/${repoMetaData.repo}/releases/tag/${latestTag.name}`,
     pub_date: new Date().toISOString(),
     platforms: {},
@@ -87,6 +87,10 @@ async function createTauriRelease() {
   // Each desktop platform is only emitted when BOTH the updater archive
   // and its .sig are present. Emitting with an empty signature crashes
   // the updater with "Invalid encoding in minisign data" on download.
+  // The Tauri updater plugin deserializes every entry under `platforms`
+  // as { signature, url } — adding android here would fail with
+  // "missing field signature". Android lives at top-level instead and
+  // is read by our native UpdateChecker.kt.
   const emit = (key, obj) => {
     if (obj.url && obj.signature) {
       releaseData.platforms[key] = obj;
@@ -100,7 +104,7 @@ async function createTauriRelease() {
   emit('darwin-aarch64', darwinUniversal);
 
   if (android.url) {
-    releaseData.platforms.android = android;
+    releaseData.android = android;
   } else {
     console.log('No android artifact');
   }
