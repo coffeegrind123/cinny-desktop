@@ -1,6 +1,7 @@
 package `in`.prinny.app
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -61,6 +62,29 @@ class MainActivity : TauriActivity() {
         window.decorView.postDelayed({
             if (!chromeClientInstalled) installRtcPermissionHandler()
         }, 1500L)
+
+        // Cold start from a notification tap: forward the roomId/eventId
+        // extras to the JS layer so it can navigate to the room. The
+        // plugin may not have loaded yet — MessageNotificationPlugin
+        // stashes the click and replays it on load().
+        handleNotificationIntent(intent)
+    }
+
+    // Hot start: the activity is already running and the system delivers
+    // a new intent (FLAG_ACTIVITY_SINGLE_TOP is set on the PendingIntent
+    // we build in MessageNotificationPlugin.show). Forward the extras
+    // straight to the plugin.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleNotificationIntent(intent)
+    }
+
+    private fun handleNotificationIntent(intent: Intent?) {
+        val roomId = intent?.getStringExtra("roomId") ?: return
+        val eventId = intent.getStringExtra("eventId") ?: return
+        if (roomId.isEmpty()) return
+        MessageNotificationPlugin.deliverClick(roomId, eventId)
     }
 
     private var chromeClientInstalled = false

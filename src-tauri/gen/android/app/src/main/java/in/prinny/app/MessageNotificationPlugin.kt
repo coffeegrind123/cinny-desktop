@@ -8,11 +8,13 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Build
+import android.webkit.WebView
 import androidx.core.app.NotificationCompat
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
 import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
+import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 
 /**
@@ -37,6 +39,53 @@ class MessageNotificationPlugin(private val activity: Activity) : Plugin(activit
     companion object {
         const val CHANNEL_ID = "prinny_messages"
         private var nextId = 1000
+
+        // Singleton handle so MainActivity.onNewIntent / onCreate can hand
+        // back the roomId/eventId extras when the user taps a notification.
+        // The plugin emits a JS-side event so the frontend can navigate to
+        // the room — mirrors the 'notification://activated' Windows path.
+        var instance: MessageNotificationPlugin? = null
+
+        // Plugin.load() runs during MainActivity.onCreate, well before the
+        // React app has mounted and called onNotificationAction(). Until JS
+        // calls the jsReady command we stash clicks and replay the most
+        // recent one when JS signals it's listening. After jsReady, click
+        // arrivals (e.g. via onNewIntent while the app is warm) emit live.
+        private var pendingClick: Pair<String, String>? = null
+        private var listenerReady = false
+
+        fun deliverClick(roomId: String, eventId: String) {
+            if (listenerReady) {
+                instance?.emitClick(roomId, eventId)
+            } else {
+                pendingClick = roomId to eventId
+            }
+        }
+    }
+
+    override fun load(webView: WebView) {
+        super.load(webView)
+        instance = this
+    }
+
+    private fun emitClick(roomId: String, eventId: String) {
+        val data = JSObject()
+        data.put("roomId", roomId)
+        data.put("eventId", eventId)
+        trigger("message-notification-clicked", data)
+    }
+
+    // JS calls this once after onNotificationAction's listener is wired up.
+    // Replays the stashed cold-start click (if any) and flips the plugin
+    // into live-emit mode so subsequent clicks fire trigger() immediately.
+    @Command
+    fun jsReady(invoke: Invoke) {
+        listenerReady = true
+        pendingClick?.let { (roomId, eventId) ->
+            pendingClick = null
+            emitClick(roomId, eventId)
+        }
+        invoke.resolve()
     }
 
     private fun ensureChannel() {
